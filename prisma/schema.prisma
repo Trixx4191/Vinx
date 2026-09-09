@@ -1,0 +1,157 @@
+// Vinx - Database schema
+// Money is stored in minor units (pesewas/cents) as Int to avoid float rounding errors.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  STRIPE
+  PAYPAL
+  PAYSTACK // handles MTN MoMo, Telecel Cash, AirtelTigo Money, and cards
+}
+
+model User {
+  id                String   @id @default(cuid())
+  name              String?
+  email             String   @unique
+  passwordHash      String
+  role              Role     @default(CUSTOMER)
+  twoFactorSecret   String?  // only ever read/written server-side, never sent to the client
+  twoFactorEnabled  Boolean  @default(false)
+  orders            Order[]
+  addresses         Address[]
+  auditLogs         AdminAuditLog[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+// Every admin action gets a row here: who did what, to what, and when.
+// Never deleted, only ever appended to.
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  adminId    String
+  admin      User     @relation(fields: [adminId], references: [id])
+  action     String   // e.g. "product.create", "product.restock", "product.update"
+  targetType String   // e.g. "Product", "ProductVariant"
+  targetId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+}
+
+model Address {
+  id          String  @id @default(cuid())
+  userId      String
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName    String
+  phone       String
+  line1       String
+  line2       String?
+  city        String
+  region      String
+  country     String  @default("GH")
+  isDefault   Boolean @default(false)
+  orders      Order[]
+}
+
+model Category {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  slug     String    @unique
+  products Product[]
+}
+
+model Product {
+  id            String           @id @default(cuid())
+  name          String
+  slug          String           @unique
+  description   String
+  material      String
+  price         Int              // minor units
+  currency      String           @default("GHS")
+  categoryId    String
+  category      Category         @relation(fields: [categoryId], references: [id])
+  frontImageUrl String
+  backImageUrl  String
+  isPublished   Boolean          @default(true)
+  variants      ProductVariant[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+}
+
+model ProductVariant {
+  id         String      @id @default(cuid())
+  productId  String
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size       String      // e.g. S, M, L, XL
+  color      String
+  sku        String      @unique
+  quantity   Int         @default(0)
+  inStock    Boolean     @default(true)
+  orderItems OrderItem[]
+
+  @@unique([productId, size, color])
+}
+
+model Order {
+  id                String             @id @default(cuid())
+  userId            String
+  user              User               @relation(fields: [userId], references: [id])
+  addressId         String
+  address           Address            @relation(fields: [addressId], references: [id])
+  items             OrderItem[]
+  status            OrderStatus        @default(PENDING)
+  paymentProvider   PaymentProvider
+  paymentRef        String?            // provider's transaction reference, never raw card data
+  totalAmount       Int                // minor units
+  currency          String             @default("GHS")
+  carrier           String?            // e.g. DHL, Speedaf, local courier name
+  trackingNumber    String?
+  trackingUrl       String?
+  estimatedDelivery DateTime?
+  statusHistory     OrderStatusEvent[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+}
+
+// One row per status change, so a customer's tracking page can show a full
+// timeline (Placed -> Paid -> Shipped -> Delivered) rather than just the
+// current state.
+model OrderStatusEvent {
+  id        String      @id @default(cuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    OrderStatus
+  note      String?
+  createdAt DateTime    @default(now())
+}
+
+model OrderItem {
+  id              String         @id @default(cuid())
+  orderId         String
+  order           Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variantId       String
+  variant         ProductVariant @relation(fields: [variantId], references: [id])
+  quantity        Int
+  priceAtPurchase Int            // minor units, snapshot at time of purchase
+}
