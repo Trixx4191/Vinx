@@ -32,18 +32,16 @@ enum PaymentProvider {
 }
 
 model User {
-  id                String   @id @default(cuid())
-  name              String?
-  email             String   @unique
-  passwordHash      String
-  role              Role     @default(CUSTOMER)
-  twoFactorSecret   String?  // only ever read/written server-side, never sent to the client
-  twoFactorEnabled  Boolean  @default(false)
-  orders            Order[]
-  addresses         Address[]
-  auditLogs         AdminAuditLog[]
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id           String   @id @default(cuid())
+  name         String?
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(CUSTOMER)
+  orders       Order[]
+  addresses    Address[]
+  auditLogs    AdminAuditLog[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 // Every admin action gets a row here: who did what, to what, and when.
