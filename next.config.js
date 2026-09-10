@@ -29,8 +29,7 @@ const nextConfig = {
             // needs it for hydration data unless we wire per-request nonces,
             // which is worth doing in Phase 4 once real payment widgets
             // (Stripe/Paystack embeds) are in and we know their domains.
-            value:
-              "default-src 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; frame-ancestors 'none';"
+            value: `default-src 'self'; img-src 'self' https: data:; connect-src 'self' https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}; frame-ancestors 'none';`
           }
         ]
       }

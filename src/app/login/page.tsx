@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 export default function LoginPage() {
-  const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedCallback = searchParams.get("callbackUrl");
+  const callbackUrl = requestedCallback?.startsWith("/") ? requestedCallback : "/";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
@@ -19,21 +21,36 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
 
-    const res = await signIn("credentials", { email, password, code, redirect: false });
+    try {
+      const res = await signIn("credentials", {
+        email,
+        password,
+        code,
+        redirect: false,
+        callbackUrl
+      });
 
-    setLoading(false);
+      if (res?.error === "2FA_REQUIRED") {
+        setNeedsCode(true);
+        setLoading(false);
+        return;
+      }
 
-    if (res?.error === "2FA_REQUIRED") {
-      setNeedsCode(true);
-      return;
+      if (res?.error) {
+        setError(needsCode ? "Invalid code" : "Invalid email or password");
+        setLoading(false);
+        return;
+      }
+
+      // NextAuth has already set the httpOnly session cookie. Use its returned
+      // URL and refresh the document so middleware sees the new token before
+      // rendering a protected route.
+      window.location.assign(res?.url ?? callbackUrl);
+    } catch {
+      setError("Login is temporarily unavailable. Check that the server and database are running.");
+    } finally {
+      setLoading(false);
     }
-
-    if (res?.error) {
-      setError(needsCode ? "Invalid code" : "Invalid email or password");
-      return;
-    }
-
-    router.push("/");
   }
 
   return (
