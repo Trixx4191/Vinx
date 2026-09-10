@@ -4,6 +4,7 @@ import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/types/product";
+import { AccountIcon } from "@/components/AccountIcon";
 
 export default async function AccountPage() {
   const session = await getServerSession(authOptions);
@@ -25,7 +26,10 @@ export default async function AccountPage() {
     <div className="page-enter mx-auto max-w-5xl">
       <div className="mb-8">
         <p className="text-[10px] uppercase tracking-[0.18em] text-soft-400">Vinx / account</p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-soft-700">Your account.</h1>
+        <h1 className="mt-3 flex items-center gap-3 text-3xl font-semibold tracking-tight text-soft-700">
+          <AccountIcon size={28} aria-hidden="true" />
+          <span>Your account.</span>
+        </h1>
         <p className="mt-2 text-sm text-soft-500">A quiet record of your pieces and deliveries.</p>
       </div>
 

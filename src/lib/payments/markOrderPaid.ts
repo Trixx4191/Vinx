@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { expirePendingOrders } from "@/lib/orders";
 
 /**
  * The only function in the codebase allowed to mark an order PAID.
@@ -12,6 +13,7 @@ import { prisma } from "@/lib/prisma";
  * this. Re-running this for an already-PAID order is a safe no-op.
  */
 export async function markOrderPaid(orderId: string, paymentRef: string, verifiedAmount: number, verifiedCurrency: string) {
+  await expirePendingOrders();
   const order = await prisma.order.findUnique({ where: { id: orderId } });
   if (!order) {
     return { ok: false as const, reason: "Order not found" };
@@ -19,6 +21,14 @@ export async function markOrderPaid(orderId: string, paymentRef: string, verifie
 
   if (order.status === "PAID") {
     return { ok: true as const, alreadyPaid: true };
+  }
+
+  if (order.status !== "PENDING" || (order.paymentExpiresAt && order.paymentExpiresAt <= new Date())) {
+    return { ok: false as const, reason: "Order is no longer payable" };
+  }
+
+  if (order.paymentRef && order.paymentRef !== paymentRef) {
+    return { ok: false as const, reason: "Payment reference does not belong to this order" };
   }
 
   // The amount/currency the provider confirms must match what we charged

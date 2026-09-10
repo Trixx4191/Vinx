@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   return withSafeErrors(async () => {
     // Rate limit by IP to slow down automated account-creation abuse.
     const ip = req.headers.get("x-forwarded-for") ?? "unknown";
-    const { ok } = rateLimit(`signup:${ip}`, 5, 60_000); // 5 signups per minute per IP
+    const { ok } = await rateLimit(`signup:${ip}`, 5, 60_000); // 5 signups per minute per IP
     if (!ok) {
       return NextResponse.json({ error: "Too many requests. Try again shortly." }, { status: 429 });
     }

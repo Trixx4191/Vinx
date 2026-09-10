@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import BrandMark from "@/components/BrandMark";
 
-export default function LoginPage() {
+function LoginForm() {
   const searchParams = useSearchParams();
   const requestedCallback = searchParams.get("callbackUrl");
   const callbackUrl = requestedCallback?.startsWith("/") ? requestedCallback : "/";
@@ -54,19 +55,22 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="page-enter mx-auto max-w-sm">
+    <div className="page-enter mx-auto max-w-md py-4 sm:py-10">
       <div className="mb-8 text-center">
+        <BrandMark href={null} className="text-base" />
         <p className="text-[10px] uppercase tracking-[0.18em] text-soft-400">Vinx / account</p>
-        <h1 className="text-2xl font-semibold tracking-tight text-soft-700">Log in</h1>
-        <p className="mt-1 text-sm text-soft-500">Welcome back</p>
+        <h1 className="mt-7 text-3xl font-semibold tracking-[-0.04em] text-soft-700">Welcome back</h1>
+        <p className="mt-2 text-sm text-soft-500">Log in to continue to your account.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="glass space-y-4 rounded-3xl p-6 sm:p-8">
+      <form onSubmit={handleSubmit} className="glass rounded-[2rem] p-6 sm:p-9">
+        <div className="space-y-5">
         <div>
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-soft-400">
+          <label className="field-label" htmlFor="login-email">
             Email
           </label>
           <input
+            id="login-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -77,10 +81,11 @@ export default function LoginPage() {
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-soft-400">
+          <label className="field-label" htmlFor="login-password">
             Password
           </label>
           <input
+            id="login-password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -92,10 +97,11 @@ export default function LoginPage() {
         </div>
         {needsCode && (
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-soft-400">
+            <label className="field-label" htmlFor="login-code">
               Authenticator code
             </label>
             <input
+              id="login-code"
               type="text"
               inputMode="numeric"
               value={code}
@@ -106,18 +112,27 @@ export default function LoginPage() {
             />
           </div>
         )}
+        </div>
         {error && <p role="alert" className="rounded-2xl bg-red-50/80 p-3 text-sm text-red-700">{error}</p>}
-        <button type="submit" disabled={loading} className="btn-primary w-full py-3 disabled:opacity-60">
+        <button type="submit" disabled={loading} className="btn-primary mt-7 w-full py-3.5 disabled:opacity-60">
           {loading ? "Logging in..." : needsCode ? "Verify" : "Log in"}
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-soft-500">
-        No account?{" "}
+      <p className="mt-7 text-center text-sm text-soft-500">
+        New to Vinx?
         <Link href="/signup" className="font-medium text-soft-700 transition-opacity hover:opacity-70">
-          Sign up
+          {" "}Create an account
         </Link>
       </p>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="mx-auto max-w-sm py-16" />}>
+      <LoginForm />
+    </Suspense>
   );
 }

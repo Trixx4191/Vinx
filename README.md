@@ -1,11 +1,13 @@
-# Vinx — Phase 1
+# Vinx
 
-Foundation: authentication + product catalog. No custom styling yet — that
-lands in Phase 4 once your reference images are in.
+Vinx is a Next.js clothing storefront with customer checkout, provider-hosted
+payments, order tracking, and a protected seller/admin console. The current
+implementation includes the catalog, authentication, admin tools, 2FA,
+S3-compatible image uploads, Paystack, Stripe, and PayPal integrations.
 
 ## Stack
 
-- **Next.js 14** (App Router, TypeScript) — one codebase for frontend + API
+- **Next.js 15** (App Router, TypeScript) — one codebase for frontend + API
 - **PostgreSQL + Prisma** — relational data, parameterized queries (no raw SQL injection surface)
 - **NextAuth (Credentials provider)** — session handling via JWT
 - **bcryptjs** — password hashing
@@ -16,7 +18,7 @@ lands in Phase 4 once your reference images are in.
 
 1. `npm install`
 2. Copy `.env.example` to `.env` and fill in a real `DATABASE_URL` (e.g. from Neon or Supabase) and a generated `NEXTAUTH_SECRET` (`openssl rand -base64 32`).
-3. `npx prisma migrate dev --name init`
+3. `npx prisma migrate dev`
 4. `npm run seed` — adds sample categories and one placeholder product
 5. `npm run dev` — visit `http://localhost:3000`
 
@@ -57,10 +59,9 @@ Central work: a back-office UI, not developer intervention.
 5. **Audit trail.** Every admin write (create product, restock) is logged to `AdminAuditLog` with who did it, what it was, and when — append-only, never edited or deleted by the app.
 6. **No UI leakage.** The "Admin" link in the navbar only renders for admins — regular users never see it, let alone reach it.
 
-**Not yet in this scaffold, worth adding before real launch:**
-- Two-factor authentication for admin accounts specifically (the highest-value target for an attacker)
-- IP allowlisting for `/admin` at the hosting/reverse-proxy level
-- Real image upload via S3/Cloudinary presigned URLs — right now the product form takes an image URL directly, once you have cloud storage set up we'll wire direct upload
+Admin 2FA, optional IP allowlisting, and presigned S3-compatible uploads are
+implemented. Configure them before production use rather than relying on their
+local-development defaults.
 
 ## Surviving refreshes
 
@@ -109,12 +110,11 @@ The cart's displayed price (`CartContext`) is purely a UI convenience so
 people can see roughly what they'll pay before checking out — it is never
 read by the server for anything that affects a charge.
 
-## Payments (Phase 3 — now wired)
+## Payments
 
-**Paystack** (cards + MTN MoMo + Telecel Cash + AirtelTigo Money) and
-**Stripe** (international cards) are both live. PayPal is intentionally not
-wired yet — same pattern can be dropped in later, but two working rails felt
-more valuable than three half-built ones.
+**Paystack** (cards + MTN MoMo + Telecel Cash + AirtelTigo Money), **Stripe**
+(international cards), and **PayPal** are wired. Provider credentials and
+webhook endpoints must be configured in the relevant dashboards.
 
 **Flow**: checkout creates a `PENDING` order → order page shows "Pay now" →
 that calls `/api/payments/{provider}/initialize` (or `create-session` for
@@ -178,6 +178,30 @@ set.
 
 **Admin IP allowlist** — optional, off by default. Set `ADMIN_IP_ALLOWLIST` (comma-separated IPs) once you have a static office/VPN IP, and `/admin` becomes unreachable from anywhere else — checked in `src/middleware.ts` before login/role even come into play.
 
-## Next phases
+## Operational notes
 
-- **Phase 4**: your custom UI direction applied across every page
+- Pending orders reserve stock for 30 minutes. Requests opportunistically
+  release expired reservations and return the quantities to inventory. A
+  scheduled request to a checkout or payment endpoint is recommended for
+  timely cleanup even during quiet periods.
+- Rate limiting uses Upstash Redis when `UPSTASH_REDIS_REST_URL` and
+  `UPSTASH_REDIS_REST_TOKEN` are configured. Without those variables it falls
+  back to an in-memory limiter suitable only for a single server instance.
+- The repository currently has no automated test files. `npm run build` is the
+  primary type-check and production validation command.
+
+## Environment variables
+
+Required: `DATABASE_URL`, `NEXTAUTH_URL`, and `NEXTAUTH_SECRET`.
+
+Payment configuration:
+`PAYSTACK_SECRET_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
+`PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, and optionally `PAYPAL_API_BASE`.
+
+Storage configuration:
+`S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`,
+`S3_BUCKET`, and `S3_PUBLIC_URL_BASE`.
+
+Optional hardening:
+`ADMIN_IP_ALLOWLIST`, `UPSTASH_REDIS_REST_URL`, and
+`UPSTASH_REDIS_REST_TOKEN`.

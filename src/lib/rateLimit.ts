@@ -1,15 +1,38 @@
-// Lightweight in-memory rate limiter.
-//
-// IMPORTANT: this resets whenever the server restarts and does not work
-// across multiple server instances. It's fine for local dev / a single
-// instance, but before going to production behind more than one server
-// process, swap this for a shared store like Upstash Redis
-// (https://github.com/upstash/ratelimit) using the same function signature.
+// Uses Upstash Redis when configured and an in-memory fallback for local
+// development or a single server instance.
 
 type Bucket = { count: number; resetAt: number };
 const buckets = new Map<string, Bucket>();
 
-export function rateLimit(key: string, limit: number, windowMs: number): { ok: boolean; remaining: number } {
+type RateLimitResult = { ok: boolean; remaining: number };
+
+async function distributedRateLimit(key: string, limit: number, windowMs: number): Promise<RateLimitResult | null> {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+
+  const redisKey = `vinx:ratelimit:${key}`;
+  const response = await fetch(`${url}/pipeline`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify([
+      ["INCR", redisKey],
+      ["EXPIRE", redisKey, Math.ceil(windowMs / 1000)]
+    ])
+  });
+
+  if (!response.ok) throw new Error(`Rate-limit store returned ${response.status}`);
+  const [countResult] = (await response.json()) as [{ result?: number }];
+  const count = Number(countResult?.result);
+  if (!Number.isInteger(count)) throw new Error("Rate-limit store returned an invalid count");
+
+  return { ok: count <= limit, remaining: Math.max(0, limit - count) };
+}
+
+export async function rateLimit(key: string, limit: number, windowMs: number): Promise<RateLimitResult> {
+  const distributed = await distributedRateLimit(key, limit, windowMs);
+  if (distributed) return distributed;
+
   const now = Date.now();
   const existing = buckets.get(key);
 
