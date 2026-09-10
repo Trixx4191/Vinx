@@ -24,6 +24,12 @@ body {
   min-height: 100vh;
 }
 
+h1,
+h2 {
+  font-family: "Iowan Old Style", "Baskerville", Georgia, serif;
+  letter-spacing: -0.035em;
+}
+
 /* Continuous soft background layer that carries across pages */
 .bg-layer {
   position: fixed;
@@ -96,6 +102,24 @@ body {
     background: rgba(250, 249, 245, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.4);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 24px 80px rgba(29, 48, 37, 0.06);
+  }
+
+  .admin-shell {
+    position: relative;
+  }
+
+  .admin-shell::before {
+    content: "";
+    position: absolute;
+    left: -1rem;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(180deg, rgba(126, 129, 117, 0), rgba(126, 129, 117, 0.42) 18%, rgba(126, 129, 117, 0));
+  }
+
+  .admin-kicker {
+    @apply text-[10px] font-medium uppercase tracking-[0.2em] text-soft-400;
   }
 }
 

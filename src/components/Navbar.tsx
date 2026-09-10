@@ -22,10 +22,10 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 px-5 pt-4 sm:px-8 lg:px-12">
-      <nav className="mx-auto flex max-w-[1400px] items-center justify-between border-b border-soft-300/50 px-1 pb-3 text-[11px] sm:px-2">
+      <nav className="mx-auto flex max-w-[1400px] items-center justify-between border-b border-soft-300/60 bg-[#e9e6dc]/70 px-1 pb-3 text-[11px] backdrop-blur-xl sm:px-2">
         <Link
           href="/"
-          className="text-[15px] font-semibold tracking-[-0.02em] text-soft-700 transition-opacity duration-300 hover:opacity-70"
+          className="text-[17px] font-semibold tracking-[-0.04em] text-soft-700 transition-opacity duration-300 hover:opacity-70"
         >
           Vinx
         </Link>
