@@ -5,13 +5,14 @@ import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/types/product";
 import OrderUpdateForm from "./OrderUpdateForm";
 
-export default async function AdminOrderDetailPage({ params }: { params: { id: string } }) {
+export default async function AdminOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   const role = (session?.user as { role?: string } | undefined)?.role;
   if (role !== "ADMIN") redirect("/");
+  const { id } = await params;
 
   const order = await prisma.order.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       user: true,
       address: true,

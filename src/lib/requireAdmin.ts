@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -32,7 +33,11 @@ export async function logAdminAction(
   targetId?: string,
   metadata?: Record<string, unknown>
 ) {
+  const jsonMetadata = metadata === undefined
+    ? undefined
+    : (JSON.parse(JSON.stringify(metadata)) as Prisma.InputJsonValue);
+
   await prisma.adminAuditLog.create({
-    data: { adminId, action, targetType, targetId, metadata }
+    data: { adminId, action, targetType, targetId, metadata: jsonMetadata }
   });
 }

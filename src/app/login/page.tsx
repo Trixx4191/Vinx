@@ -24,9 +24,6 @@ export default function LoginPage() {
     setLoading(false);
 
     if (res?.error === "2FA_REQUIRED") {
-      // Password was correct — this account just also needs its
-      // authenticator code. Reveal the second field rather than treating
-      // it as a failure.
       setNeedsCode(true);
       return;
     }
@@ -40,11 +37,17 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="mx-auto max-w-sm">
-      <h1 className="mb-6 text-xl font-semibold">Log in</h1>
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="page-enter mx-auto max-w-sm">
+      <div className="text-center">
+        <h1 className="text-2xl font-semibold tracking-tight text-soft-700">Log in</h1>
+        <p className="mt-1 text-sm text-soft-500">Welcome back</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="glass mt-8 space-y-4 rounded-3xl p-6 sm:p-8">
         <div>
-          <label className="block text-sm">Email</label>
+          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-soft-400">
+            Email
+          </label>
           <input
             type="email"
             value={email}
@@ -52,11 +55,13 @@ export default function LoginPage() {
             required
             disabled={needsCode}
             autoComplete="email"
-            className="mt-1 w-full border border-gray-300 px-3 py-2 disabled:bg-gray-100"
+            className="input-soft disabled:opacity-60"
           />
         </div>
         <div>
-          <label className="block text-sm">Password</label>
+          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-soft-400">
+            Password
+          </label>
           <input
             type="password"
             value={password}
@@ -64,12 +69,14 @@ export default function LoginPage() {
             required
             disabled={needsCode}
             autoComplete="current-password"
-            className="mt-1 w-full border border-gray-300 px-3 py-2 disabled:bg-gray-100"
+            className="input-soft disabled:opacity-60"
           />
         </div>
         {needsCode && (
           <div>
-            <label className="block text-sm">Authenticator code</label>
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-soft-400">
+              Authenticator code
+            </label>
             <input
               type="text"
               inputMode="numeric"
@@ -77,17 +84,21 @@ export default function LoginPage() {
               onChange={(e) => setCode(e.target.value)}
               required
               autoFocus
-              className="mt-1 w-full border border-gray-300 px-3 py-2"
+              className="input-soft"
             />
           </div>
         )}
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button type="submit" disabled={loading} className="w-full bg-black py-2 text-white disabled:bg-gray-300">
+        {error && <p className="text-sm text-red-500/90">{error}</p>}
+        <button type="submit" disabled={loading} className="btn-primary w-full py-3 disabled:opacity-60">
           {loading ? "Logging in..." : needsCode ? "Verify" : "Log in"}
         </button>
       </form>
-      <p className="mt-4 text-sm text-gray-600">
-        No account? <Link href="/signup" className="underline">Sign up</Link>
+
+      <p className="mt-6 text-center text-sm text-soft-500">
+        No account?{" "}
+        <Link href="/signup" className="font-medium text-soft-700 transition-opacity hover:opacity-70">
+          Sign up
+        </Link>
       </p>
     </div>
   );

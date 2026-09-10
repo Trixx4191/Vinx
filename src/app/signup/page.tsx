@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -34,48 +35,64 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="mx-auto max-w-sm">
-      <h1 className="mb-6 text-xl font-semibold">Create account</h1>
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="page-enter mx-auto max-w-sm">
+      <div className="text-center">
+        <h1 className="text-2xl font-semibold tracking-tight text-soft-700">Sign up</h1>
+        <p className="mt-1 text-sm text-soft-500">Create your account</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="glass mt-8 space-y-4 rounded-3xl p-6 sm:p-8">
         <div>
-          <label className="block text-sm">Name</label>
+          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-soft-400">
+            Name
+          </label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            className="mt-1 w-full border border-gray-300 px-3 py-2"
+            className="input-soft"
           />
         </div>
         <div>
-          <label className="block text-sm">Email</label>
+          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-soft-400">
+            Email
+          </label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
             autoComplete="email"
-            className="mt-1 w-full border border-gray-300 px-3 py-2"
+            className="input-soft"
           />
         </div>
         <div>
-          <label className="block text-sm">Password</label>
+          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-soft-400">
+            Password
+          </label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            minLength={10}
+            minLength={8}
             autoComplete="new-password"
-            className="mt-1 w-full border border-gray-300 px-3 py-2"
+            className="input-soft"
           />
-          <p className="mt-1 text-xs text-gray-500">At least 10 characters, with a letter and a number.</p>
         </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button type="submit" disabled={loading} className="w-full bg-black py-2 text-white disabled:bg-gray-300">
-          {loading ? "Creating account..." : "Create account"}
+        {error && <p className="text-sm text-red-500/90">{error}</p>}
+        <button type="submit" disabled={loading} className="btn-primary w-full py-3 disabled:opacity-60">
+          {loading ? "Creating..." : "Create account"}
         </button>
       </form>
+
+      <p className="mt-6 text-center text-sm text-soft-500">
+        Already have an account?{" "}
+        <Link href="/login" className="font-medium text-soft-700 transition-opacity hover:opacity-70">
+          Log in
+        </Link>
+      </p>
     </div>
   );
 }

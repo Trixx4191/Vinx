@@ -14,14 +14,31 @@ export default async function ProductsPage() {
   const products = await getProducts();
 
   return (
-    <div>
-      <h1 className="mb-6 text-xl font-semibold">Shop</h1>
+    <div className="page-enter">
+      <div className="mb-10 text-center sm:text-left">
+        <h1 className="text-2xl font-semibold tracking-tight text-soft-700 sm:text-3xl">
+          Shop
+        </h1>
+        <p className="mt-1 text-sm text-soft-500">
+          Soft layers and considered essentials
+        </p>
+      </div>
+
       {products.length === 0 ? (
-        <p className="text-gray-600">No products yet.</p>
+        <div className="glass rounded-3xl px-8 py-16 text-center">
+          <p className="text-soft-500">No products yet.</p>
+          <p className="mt-1 text-sm text-soft-400">Check back soon.</p>
+        </div>
       ) : (
-        <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4">
-          {products.map((p) => (
-            <ProductCard key={p.id} product={p} />
+        <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 sm:gap-x-6 md:grid-cols-4">
+          {products.map((p, i) => (
+            <div
+              key={p.id}
+              className="animate-scale-in"
+              style={{ animationDelay: `${Math.min(i * 0.05, 0.4)}s` }}
+            >
+              <ProductCard product={p} />
+            </div>
           ))}
         </div>
       )}

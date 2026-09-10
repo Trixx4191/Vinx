@@ -5,13 +5,13 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/types/product";
 
-export default async function AdminOrdersPage({ searchParams }: { searchParams: { status?: string } }) {
+export default async function AdminOrdersPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
   const session = await getServerSession(authOptions);
   const role = (session?.user as { role?: string } | undefined)?.role;
   if (role !== "ADMIN") redirect("/");
 
   const statuses = ["PENDING", "PAID", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED", "FAILED"];
-  const filter = searchParams.status;
+  const { status: filter } = await searchParams;
 
   const orders = await prisma.order.findMany({
     where: filter ? { status: filter as never } : undefined,

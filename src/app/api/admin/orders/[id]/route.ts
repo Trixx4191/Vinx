@@ -4,13 +4,14 @@ import { requireAdmin, logAdminAction } from "@/lib/requireAdmin";
 import { adminOrderUpdateSchema } from "@/lib/validation";
 import { withSafeErrors } from "@/lib/safeErrors";
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin();
   if (!admin.authorized) return admin.response;
+  const { id } = await params;
 
   return withSafeErrors(async () => {
     const order = await prisma.order.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         user: { select: { name: true, email: true } },
         address: true,
@@ -24,9 +25,10 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   });
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin();
   if (!admin.authorized) return admin.response;
+  const { id } = await params;
 
   return withSafeErrors(async () => {
     const body = await req.json().catch(() => null);
@@ -36,7 +38,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return NextResponse.json({ error: parsed.error.errors[0]?.message ?? "Invalid input" }, { status: 400 });
     }
 
-    const existing = await prisma.order.findUnique({ where: { id: params.id } });
+    const existing = await prisma.order.findUnique({ where: { id } });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const { status, carrier, trackingNumber, trackingUrl, estimatedDelivery, note } = parsed.data;
@@ -47,7 +49,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     // an admin account being compromised shouldn't be a path to altering a
     // charge that already happened.
     const order = await prisma.order.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(status ? { status } : {}),
         ...(carrier !== undefined ? { carrier: carrier || null } : {}),

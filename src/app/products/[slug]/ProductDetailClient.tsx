@@ -43,90 +43,127 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   }
 
   return (
-    <div className="grid gap-8 md:grid-cols-2">
-      <div>
-        <div className="relative aspect-[3/4] bg-gray-100">
+    <div className="grid gap-10 md:grid-cols-2 md:gap-14">
+      {/* Image column — clear Apple-style presentation */}
+      <div className="space-y-4">
+        <div className="relative aspect-[3/4] overflow-hidden rounded-3xl bg-soft-100 shadow-soft">
           <Image
             src={view === "front" ? product.frontImageUrl : product.backImageUrl}
             alt={product.name}
             fill
-            className="object-cover"
+            priority
+            sizes="(max-width: 768px) 100vw, 50vw"
+            className="object-cover transition-opacity duration-500 ease-apple"
           />
         </div>
-        <div className="mt-2 flex gap-2">
-          <button
-            onClick={() => setView("front")}
-            className={`border px-3 py-1 text-sm ${view === "front" ? "border-black" : "border-gray-300"}`}
-          >
-            Front
-          </button>
-          <button
-            onClick={() => setView("back")}
-            className={`border px-3 py-1 text-sm ${view === "back" ? "border-black" : "border-gray-300"}`}
-          >
-            Back
-          </button>
+        <div className="flex gap-2">
+          {(["front", "back"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-300 ease-apple ${
+                view === v
+                  ? "bg-soft-700 text-white"
+                  : "bg-white/70 text-soft-500 hover:bg-white hover:text-soft-700"
+              }`}
+            >
+              {v === "front" ? "Front" : "Back"}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div>
-        <h1 className="text-2xl font-semibold">{product.name}</h1>
-        <p className="mt-1 text-lg">{formatPrice(product.price, product.currency)}</p>
-        <p className="mt-4 text-gray-700">{product.description}</p>
-        <p className="mt-2 text-sm text-gray-500">Material: {product.material}</p>
+      {/* Info column */}
+      <div className="flex flex-col">
+        <h1 className="text-2xl font-semibold tracking-tight text-soft-700 sm:text-3xl">
+          {product.name}
+        </h1>
+        <p className="mt-2 text-lg text-soft-500">
+          {formatPrice(product.price, product.currency)}
+        </p>
+        <p className="mt-5 text-sm leading-relaxed text-soft-600">
+          {product.description}
+        </p>
+        {product.material && (
+          <p className="mt-2 text-sm text-soft-400">
+            Material · {product.material}
+          </p>
+        )}
 
-        <div className="mt-6">
-          <p className="mb-1 text-sm font-medium">Size</p>
-          <div className="flex gap-2">
-            {sizes.map((s) => (
-              <button
-                key={s}
-                onClick={() => setSize(s)}
-                className={`border px-3 py-1 text-sm ${s === size ? "border-black" : "border-gray-300"}`}
-              >
-                {s}
-              </button>
-            ))}
+        <div className="mt-8 space-y-5">
+          <div>
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-soft-400">
+              Size
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {sizes.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setSize(s)}
+                  className={`min-w-[3rem] rounded-full px-4 py-2 text-sm font-medium transition-all duration-300 ease-apple ${
+                    s === size
+                      ? "bg-soft-700 text-white shadow-soft"
+                      : "bg-white/70 text-soft-600 hover:bg-white hover:text-soft-700"
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-soft-400">
+              Color
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {colors.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setColor(c)}
+                  className={`rounded-full px-4 py-2 text-sm font-medium transition-all duration-300 ease-apple ${
+                    c === color
+                      ? "bg-soft-700 text-white shadow-soft"
+                      : "bg-white/70 text-soft-600 hover:bg-white hover:text-soft-700"
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-soft-400">
+              Quantity
+            </p>
+            <input
+              type="number"
+              min={1}
+              max={Math.max(maxQuantity, 1)}
+              value={quantity}
+              onChange={(e) =>
+                setQuantity(Math.min(Number(e.target.value), Math.max(maxQuantity, 1)))
+              }
+              className="input-soft w-24"
+            />
           </div>
         </div>
 
-        <div className="mt-4">
-          <p className="mb-1 text-sm font-medium">Color</p>
-          <div className="flex gap-2">
-            {colors.map((c) => (
-              <button
-                key={c}
-                onClick={() => setColor(c)}
-                className={`border px-3 py-1 text-sm ${c === color ? "border-black" : "border-gray-300"}`}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-4">
-          <p className="mb-1 text-sm font-medium">Quantity</p>
-          <input
-            type="number"
-            min={1}
-            max={Math.max(maxQuantity, 1)}
-            value={quantity}
-            onChange={(e) => setQuantity(Math.min(Number(e.target.value), Math.max(maxQuantity, 1)))}
-            className="w-20 border border-gray-300 px-2 py-1"
-          />
-        </div>
-
-        <p className="mt-4 text-sm">
-          {inStock ? `${maxQuantity} in stock` : <span className="text-red-600">Out of stock</span>}
+        <p className="mt-5 text-sm text-soft-500">
+          {inStock ? (
+            <span>{maxQuantity} in stock</span>
+          ) : (
+            <span className="text-red-500/90">Out of stock</span>
+          )}
         </p>
 
         <button
           onClick={addToCart}
           disabled={!inStock}
-          className="mt-6 w-full bg-black py-3 text-white disabled:bg-gray-300"
+          className="btn-primary mt-8 w-full py-3.5 disabled:cursor-not-allowed disabled:bg-soft-300 disabled:hover:scale-100"
         >
-          {added ? "Added" : "Add to cart"}
+          {added ? "Added to cart" : "Add to cart"}
         </button>
       </div>
     </div>

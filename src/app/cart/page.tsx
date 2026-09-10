@@ -9,58 +9,75 @@ export default function CartPage() {
 
   if (items.length === 0) {
     return (
-      <div>
-        <h1 className="mb-4 text-xl font-semibold">Cart</h1>
-        <p className="text-gray-600">Your cart is empty.</p>
-        <Link href="/products" className="mt-4 inline-block underline text-sm">
-          Continue shopping
-        </Link>
+      <div className="page-enter mx-auto max-w-md text-center">
+        <h1 className="text-2xl font-semibold tracking-tight text-soft-700">Cart</h1>
+        <div className="glass mt-8 rounded-3xl px-8 py-12">
+          <p className="text-soft-500">Your cart is empty.</p>
+          <Link href="/products" className="btn-primary mt-6 inline-flex">
+            Continue shopping
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div>
-      <h1 className="mb-6 text-xl font-semibold">Cart</h1>
-      <div className="space-y-4">
+    <div className="page-enter mx-auto max-w-2xl">
+      <h1 className="mb-8 text-2xl font-semibold tracking-tight text-soft-700">Cart</h1>
+
+      <div className="space-y-3">
         {items.map((item) => (
-          <div key={item.variantId} className="flex items-center justify-between border-b border-gray-200 pb-4">
-            <div>
-              <p className="font-medium">{item.name}</p>
-              <p className="text-sm text-gray-600">
+          <div
+            key={item.variantId}
+            className="glass flex items-center justify-between gap-4 rounded-3xl px-5 py-4"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-medium text-soft-700">{item.name}</p>
+              <p className="mt-0.5 text-sm text-soft-500">
                 {item.size} / {item.color}
               </p>
-              <div className="mt-1 flex items-center gap-2 text-sm">
-                <label>Qty</label>
+              <div className="mt-3 flex items-center gap-3">
+                <label className="text-xs text-soft-400">Qty</label>
                 <input
                   type="number"
                   min={1}
                   max={item.maxQuantity}
                   value={item.quantity}
                   onChange={(e) => updateQuantity(item.variantId, Number(e.target.value))}
-                  className="w-16 border border-gray-300 px-2 py-1"
+                  className="input-soft w-16 py-1.5 text-center"
                 />
-                <button onClick={() => removeItem(item.variantId)} className="ml-2 text-red-600 underline">
+                <button
+                  onClick={() => removeItem(item.variantId)}
+                  className="text-xs font-medium text-soft-400 transition-colors hover:text-red-500"
+                >
                   Remove
                 </button>
               </div>
             </div>
-            <p>{formatPrice(item.price * item.quantity, item.currency)}</p>
+            <p className="shrink-0 text-sm font-medium text-soft-700">
+              {formatPrice(item.price * item.quantity, item.currency)}
+            </p>
           </div>
         ))}
       </div>
 
-      <div className="mt-6 flex items-center justify-between text-lg font-medium">
-        <span>Total</span>
-        <span>{formatPrice(totalPrice, items[0]?.currency ?? "GHS")}</span>
+      <div className="glass-strong mt-8 rounded-3xl px-6 py-5">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-soft-500">Subtotal</span>
+          <span className="text-lg font-semibold text-soft-700">
+            {formatPrice(totalPrice, items[0]?.currency ?? "GHS")}
+          </span>
+        </div>
+        <Link href="/checkout" className="btn-primary mt-5 flex w-full justify-center py-3.5">
+          Checkout
+        </Link>
+        <Link
+          href="/products"
+          className="mt-3 block text-center text-sm text-soft-500 transition-colors hover:text-soft-700"
+        >
+          Continue shopping
+        </Link>
       </div>
-      <p className="mt-1 text-xs text-gray-500">
-        Final total is recalculated at checkout from live prices — this is an estimate.
-      </p>
-
-      <Link href="/checkout" className="mt-6 block w-full bg-black py-3 text-center text-white">
-        Checkout
-      </Link>
     </div>
   );
 }

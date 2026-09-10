@@ -5,14 +5,15 @@ import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/types/product";
 import PayButton from "@/components/PayButton";
 
-export default async function OrderDetailPage({ params }: { params: { id: string } }) {
+export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   const userId = (session?.user as { id?: string } | undefined)?.id;
   const role = (session?.user as { role?: string } | undefined)?.role;
   if (!session || !userId) redirect("/login");
+  const { id } = await params;
 
   const order = await prisma.order.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       items: { include: { variant: { include: { product: true } } } },
       address: true,
