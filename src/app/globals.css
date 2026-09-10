@@ -24,6 +24,16 @@ body {
   min-height: 100vh;
 }
 
+.brand-wordmark {
+  display: inline-block;
+  color: var(--fg);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  line-height: 1;
+}
+
 /* Continuous soft background layer that carries across pages */
 .bg-layer {
   position: fixed;
@@ -33,6 +43,10 @@ body {
     linear-gradient(180deg, rgba(233, 230, 220, 0.42), rgba(233, 230, 220, 0.78)),
     url("/001.jpeg") center 18% / cover no-repeat;
   pointer-events: none;
+}
+
+body:has(.signup-page) .bg-layer {
+  background: var(--bg);
 }
 
 /* iOS-style glass surface */

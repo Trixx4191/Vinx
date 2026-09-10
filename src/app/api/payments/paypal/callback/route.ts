@@ -16,8 +16,8 @@ export async function GET(req: NextRequest) {
 
   try {
     const captured = await captureOrder(paypalOrderId);
-    if (captured.status === "COMPLETED") {
-      await markOrderPaid(orderId, captured.captureId, captured.amountMinorUnits, captured.currency);
+    if (captured.status === "COMPLETED" && captured.referenceId === orderId) {
+      await markOrderPaid(orderId, paypalOrderId, captured.amountMinorUnits, captured.currency);
     }
   } catch (err) {
     console.error("[paypal callback] capture failed", err);

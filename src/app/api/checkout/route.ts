@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { checkoutSchema } from "@/lib/validation";
 import { withSafeErrors } from "@/lib/safeErrors";
 import { rateLimit } from "@/lib/rateLimit";
+import { expirePendingOrders, PENDING_ORDER_TTL_MS } from "@/lib/orders";
 
 export async function POST(req: NextRequest) {
   // Layer 1: must be logged in at all. Middleware already enforces this for
@@ -16,12 +17,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const { ok } = rateLimit(`checkout:${userId}`, 10, 60_000);
+  const { ok } = await rateLimit(`checkout:${userId}`, 10, 60_000);
   if (!ok) {
     return NextResponse.json({ error: "Too many requests. Try again shortly." }, { status: 429 });
   }
 
   return withSafeErrors(async () => {
+    await expirePendingOrders();
     const body = await req.json().catch(() => null);
     const parsed = checkoutSchema.safeParse(body);
 
@@ -29,7 +31,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: parsed.error.errors[0]?.message ?? "Invalid input" }, { status: 400 });
     }
 
-    const { items, address, paymentProvider } = parsed.data;
+    const { address, paymentProvider } = parsed.data;
+    const items = [...new Map(parsed.data.items.map((item) => [item.variantId, item])).values()];
 
     // Whatever price the client's cart *displayed* is irrelevant from here on.
     // Everything charge-related below is derived fresh from the database.
@@ -89,6 +92,7 @@ export async function POST(req: NextRequest) {
             paymentProvider,
             totalAmount,
             currency,
+            paymentExpiresAt: new Date(Date.now() + PENDING_ORDER_TTL_MS),
             items: { create: orderItemsData },
             statusHistory: { create: { status: "PENDING", note: "Order created, awaiting payment" } }
           },

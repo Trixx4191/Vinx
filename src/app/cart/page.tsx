@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import { formatPrice } from "@/types/product";
+import { HandbagIcon } from "@/components/HandbagIcon";
 
 export default function CartPage() {
   const { items, removeItem, updateQuantity, totalPrice } = useCart();
@@ -12,7 +13,10 @@ export default function CartPage() {
     return (
       <div className="page-enter mx-auto max-w-md py-12 text-center">
         <p className="text-[10px] uppercase tracking-[0.18em] text-soft-400">Vinx / bag</p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-soft-700">Your bag is quiet.</h1>
+        <h1 className="mt-3 flex items-center justify-center gap-3 text-3xl font-semibold tracking-tight text-soft-700">
+          <HandbagIcon size={28} aria-hidden="true" />
+          <span>Your bag is quiet.</span>
+        </h1>
         <div className="glass mt-8 rounded-3xl px-8 py-12">
           <p className="text-sm text-soft-500">There are no pieces here yet.</p>
           <Link href="/products" className="btn-primary mt-6">Continue shopping</Link>
@@ -25,7 +29,10 @@ export default function CartPage() {
     <div className="page-enter mx-auto max-w-5xl">
       <div className="mb-8">
         <p className="text-[10px] uppercase tracking-[0.18em] text-soft-400">Vinx / bag</p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-soft-700">Your selected pieces.</h1>
+        <h1 className="mt-3 flex items-center gap-3 text-3xl font-semibold tracking-tight text-soft-700">
+          <HandbagIcon size={28} aria-hidden="true" />
+          <span>Your selected pieces.</span>
+        </h1>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">

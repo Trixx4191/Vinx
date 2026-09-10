@@ -125,6 +125,7 @@ model Order {
   paymentRef        String?            // provider's transaction reference, never raw card data
   totalAmount       Int                // minor units
   currency          String             @default("GHS")
+  paymentExpiresAt   DateTime?
   carrier           String?            // e.g. DHL, Speedaf, local courier name
   trackingNumber    String?
   trackingUrl       String?

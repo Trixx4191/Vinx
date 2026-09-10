@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import BrandMark from "@/components/BrandMark";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -35,19 +36,24 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="page-enter mx-auto max-w-sm">
+    <div className="signup-page page-enter mx-auto max-w-md py-4 sm:py-10">
       <div className="mb-8 text-center">
-        <p className="text-[10px] uppercase tracking-[0.18em] text-soft-400">Vinx / account</p>
-        <h1 className="text-2xl font-semibold tracking-tight text-soft-700">Sign up</h1>
-        <p className="mt-1 text-sm text-soft-500">Create your account</p>
+        <BrandMark href={null} className="text-base" />
+        <p className="mt-7 text-[10px] uppercase tracking-[0.2em] text-soft-400">Vinx / account</p>
+        <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-soft-700">Create your account</h1>
+        <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-soft-500">
+          Save your details and keep your Vinx pieces close.
+        </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="glass space-y-4 rounded-3xl p-6 sm:p-8">
+      <form onSubmit={handleSubmit} className="glass rounded-[2rem] p-6 sm:p-9">
+        <div className="space-y-5">
         <div>
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-soft-400">
-            Name
+          <label className="field-label" htmlFor="signup-name">
+            Full name
           </label>
           <input
+            id="signup-name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -56,10 +62,11 @@ export default function SignupPage() {
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-soft-400">
+          <label className="field-label" htmlFor="signup-email">
             Email
           </label>
           <input
+            id="signup-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -69,30 +76,35 @@ export default function SignupPage() {
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-soft-400">
+          <label className="field-label" htmlFor="signup-password">
             Password
           </label>
           <input
+            id="signup-password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            minLength={8}
+            minLength={10}
             autoComplete="new-password"
             className="input-soft"
           />
+          <p className="mt-2 text-xs leading-relaxed text-soft-400">Use at least 10 characters with one letter and one number.</p>
+        </div>
         </div>
         {error && <p role="alert" className="rounded-2xl bg-red-50/80 p-3 text-sm text-red-700">{error}</p>}
-        {!error && loading && <p className="text-sm text-soft-500">Creating your account...</p>}
-        <button type="submit" disabled={loading} className="btn-primary w-full py-3 disabled:opacity-60">
+        <button type="submit" disabled={loading} className="btn-primary mt-7 w-full py-3.5 disabled:opacity-60">
           {loading ? "Creating..." : "Create account"}
         </button>
+        <p className="mt-4 text-center text-[11px] leading-relaxed text-soft-400">
+          By creating an account, you agree to receive updates about your Vinx orders and account.
+        </p>
       </form>
 
-      <p className="mt-6 text-center text-sm text-soft-500">
-        Already have an account?{" "}
+      <p className="mt-7 text-center text-sm text-soft-500">
+        Already have an account?
         <Link href="/login" className="font-medium text-soft-700 transition-opacity hover:opacity-70">
-          Log in
+          {" "}Log in
         </Link>
       </p>
     </div>
