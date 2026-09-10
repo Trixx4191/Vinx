@@ -33,7 +33,8 @@ export const createProductSchema = z.object({
   categorySlug: z.string().trim().min(1),
   frontImageUrl: z.string().url(),
   backImageUrl: z.string().url(),
-  variants: z.array(productVariantSchema).min(1)
+  variants: z.array(productVariantSchema).min(1),
+  isPublished: z.boolean().default(true)
 });
 
 export const restockRowSchema = z.object({

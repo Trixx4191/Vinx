@@ -3,54 +3,11 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatPrice } from "@/types/product";
+import ProductsTable from "./ProductsTable";
 
 export default async function AdminProductsPage() {
   const session = await getServerSession(authOptions);
-  const role = (session?.user as { role?: string } | undefined)?.role;
-  if (role !== "ADMIN") redirect("/");
-
-  const products = await prisma.product.findMany({
-    include: { category: true, variants: true },
-    orderBy: { createdAt: "desc" }
-  });
-
-  return (
-    <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Products</h1>
-        <Link href="/admin/products/new" className="border border-black px-4 py-2 text-sm">
-          Add product
-        </Link>
-      </div>
-
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b text-left">
-            <th className="py-2">Name</th>
-            <th>Category</th>
-            <th>Price</th>
-            <th>Variants</th>
-            <th>Total stock</th>
-            <th>Published</th>
-          </tr>
-        </thead>
-        <tbody>
-          {products.map((p) => {
-            const totalStock = p.variants.reduce((sum, v) => sum + v.quantity, 0);
-            return (
-              <tr key={p.id} className="border-b">
-                <td className="py-2">{p.name}</td>
-                <td>{p.category.name}</td>
-                <td>{formatPrice(p.price, p.currency)}</td>
-                <td>{p.variants.length}</td>
-                <td>{totalStock}</td>
-                <td>{p.isPublished ? "Yes" : "No"}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
+  if ((session?.user as { role?: string } | undefined)?.role !== "ADMIN") redirect("/");
+  const products = await prisma.product.findMany({ include: { category: { select: { name: true, slug: true } }, variants: true }, orderBy: { createdAt: "desc" } });
+  return <div><div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-[10px] uppercase tracking-[0.18em] text-soft-400">Catalog / inventory</p><h1 className="mt-2 text-3xl font-semibold tracking-tight text-soft-700">Products.</h1><p className="mt-2 text-sm text-soft-500">Manage what is visible, priced, and available.</p></div><Link href="/admin/products/new" className="btn-primary text-xs uppercase tracking-[0.1em]">Add product</Link></div><ProductsTable products={products} /></div>;
 }

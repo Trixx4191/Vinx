@@ -36,12 +36,13 @@ export default function SignupPage() {
 
   return (
     <div className="page-enter mx-auto max-w-sm">
-      <div className="text-center">
+      <div className="mb-8 text-center">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-soft-400">Vinx / account</p>
         <h1 className="text-2xl font-semibold tracking-tight text-soft-700">Sign up</h1>
         <p className="mt-1 text-sm text-soft-500">Create your account</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="glass mt-8 space-y-4 rounded-3xl p-6 sm:p-8">
+      <form onSubmit={handleSubmit} className="glass space-y-4 rounded-3xl p-6 sm:p-8">
         <div>
           <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-soft-400">
             Name
@@ -81,7 +82,8 @@ export default function SignupPage() {
             className="input-soft"
           />
         </div>
-        {error && <p className="text-sm text-red-500/90">{error}</p>}
+        {error && <p role="alert" className="rounded-2xl bg-red-50/80 p-3 text-sm text-red-700">{error}</p>}
+        {!error && loading && <p className="text-sm text-soft-500">Creating your account...</p>}
         <button type="submit" disabled={loading} className="btn-primary w-full py-3 disabled:opacity-60">
           {loading ? "Creating..." : "Create account"}
         </button>

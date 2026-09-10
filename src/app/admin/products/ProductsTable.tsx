@@ -1,0 +1,17 @@
+"use client";
+
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { formatPrice, Product } from "@/types/product";
+
+export default function ProductsTable({ products }: { products: (Product & { isPublished?: boolean })[] }) {
+  const [query, setQuery] = useState("");
+  const filtered = useMemo(() => products.filter((product) => `${product.name} ${product.category.name}`.toLowerCase().includes(query.toLowerCase())), [products, query]);
+  return <>
+    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search products" className="input-soft max-w-sm py-2.5" /><p className="text-xs text-soft-400">{filtered.length} of {products.length} products</p></div>
+    <div className="space-y-3 md:hidden">{filtered.map((product) => <Link key={product.id} href={`/admin/products/${product.id}`} className="glass block rounded-2xl p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium text-soft-700">{product.name}</p><p className="mt-1 text-xs text-soft-400">{product.category.name} · {product.variants.length} variants</p></div><Status published={product.isPublished !== false} /></div><div className="mt-4 flex justify-between text-sm"><span className={product.variants.reduce((sum, variant) => sum + variant.quantity, 0) <= 3 ? "text-amber-700" : "text-soft-500"}>{product.variants.reduce((sum, variant) => sum + variant.quantity, 0)} in stock</span><span className="font-medium text-soft-700">{formatPrice(product.price, product.currency)}</span></div></Link>)}</div>
+    <div className="hidden overflow-x-auto rounded-2xl border border-soft-200/70 bg-white/45 md:block"><table className="w-full text-left text-sm"><thead className="border-b border-soft-200/70 text-xs uppercase tracking-wider text-soft-400"><tr><th className="px-5 py-4">Product</th><th>Category</th><th>Price</th><th>Variants</th><th>Stock</th><th>Status</th><th /></tr></thead><tbody className="divide-y divide-soft-200/60">{filtered.map((product) => { const stock = product.variants.reduce((sum, variant) => sum + variant.quantity, 0); return <tr key={product.id}><td className="px-5 py-4 font-medium text-soft-700">{product.name}</td><td className="text-soft-500">{product.category.name}</td><td className="text-soft-600">{formatPrice(product.price, product.currency)}</td><td className="text-soft-500">{product.variants.length}</td><td className={stock <= 3 ? "font-medium text-amber-700" : "text-soft-500"}>{stock}{stock <= 3 && <span className="ml-1 text-xs">low</span>}</td><td><Status published={product.isPublished !== false} /></td><td className="pr-5 text-right"><Link href={`/products/${product.slug}`} target="_blank" className="mr-3 text-xs text-soft-400 hover:text-soft-700">Preview</Link><Link href={`/admin/products/${product.id}`} className="text-xs text-soft-600 underline underline-offset-4">Edit</Link></td></tr>; })}</tbody></table></div>
+    {filtered.length === 0 && <div className="glass rounded-2xl p-10 text-center text-sm text-soft-500">No products match that search.</div>}
+  </>;
+}
+function Status({ published }: { published: boolean }) { return <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] uppercase tracking-wider ${published ? "bg-emerald-100 text-emerald-800" : "bg-soft-200 text-soft-500"}`}>{published ? "Published" : "Draft"}</span>; }

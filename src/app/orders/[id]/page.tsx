@@ -5,12 +5,13 @@ import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/types/product";
 import PayButton from "@/components/PayButton";
 
-export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function OrderDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ created?: string }> }) {
   const session = await getServerSession(authOptions);
   const userId = (session?.user as { id?: string } | undefined)?.id;
   const role = (session?.user as { role?: string } | undefined)?.role;
   if (!session || !userId) redirect("/login");
   const { id } = await params;
+  const { created } = await searchParams;
 
   const order = await prisma.order.findUnique({
     where: { id },
@@ -29,6 +30,21 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
   return (
     <div>
+      {created === "1" && order.status === "PENDING" && (
+        <div className="mb-6 rounded-2xl border border-soft-200 bg-white/60 p-4 text-sm text-soft-600">
+          Your order is reserved. Complete payment below to confirm it.
+        </div>
+      )}
+      {order.status === "PAID" && (
+        <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 text-sm text-emerald-800">
+          Payment confirmed. We&apos;ll let you know when your order ships.
+        </div>
+      )}
+      {(order.status === "FAILED" || order.status === "CANCELLED") && (
+        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50/70 p-4 text-sm text-red-700">
+          This order could not be completed. Please return to your bag and try again.
+        </div>
+      )}
       <h1 className="mb-2 text-xl font-semibold">Order {order.status === "PAID" ? "confirmed" : "placed"}</h1>
       <p className="mb-6 text-sm text-gray-600">Order #{order.id}</p>
 

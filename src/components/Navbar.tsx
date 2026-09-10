@@ -11,6 +11,8 @@ export default function Navbar() {
   const pathname = usePathname();
   const isAdmin = (session?.user as { role?: string } | undefined)?.role === "ADMIN";
 
+  if (pathname.startsWith("/admin")) return null;
+
   const linkClass = (href: string) =>
     `relative text-sm font-medium transition-colors duration-300 ease-apple ${
       pathname === href || (href !== "/" && pathname.startsWith(href))
@@ -42,14 +44,12 @@ export default function Navbar() {
             )}
           </Link>
           {session ? (
-            isAdmin && (
-              <Link
-                href="/admin"
-                className="ml-1 px-2 py-1.5 text-soft-700 transition-colors duration-300 hover:text-soft-500"
-              >
-                Admin
-              </Link>
-            )
+            <Link
+              href={isAdmin ? "/admin" : "/account"}
+              className="ml-1 px-2 py-1.5 text-soft-700 transition-colors duration-300 hover:text-soft-500"
+            >
+              {isAdmin ? "Admin" : "account"}
+            </Link>
           ) : (
             <Link href="/login" className={`${linkClass("/login")} px-2 py-1.5`}>
               account

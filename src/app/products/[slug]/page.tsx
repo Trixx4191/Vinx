@@ -16,5 +16,15 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
   if (!product) notFound();
 
-  return <ProductDetailClient product={product} />;
+  const relatedProducts = await prisma.product.findMany({
+    where: { isPublished: true, categoryId: product.categoryId, id: { not: product.id } },
+    take: 4,
+    orderBy: { createdAt: "desc" },
+    include: {
+      category: { select: { name: true, slug: true } },
+      variants: { select: { id: true, size: true, color: true, quantity: true, inStock: true, sku: true } }
+    }
+  });
+
+  return <ProductDetailClient product={product} relatedProducts={relatedProducts} />;
 }

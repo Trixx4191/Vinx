@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
         categoryId: category.id,
         frontImageUrl: data.frontImageUrl,
         backImageUrl: data.backImageUrl,
+        isPublished: data.isPublished,
         variants: { create: data.variants }
       },
       include: { variants: true }

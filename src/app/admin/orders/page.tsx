@@ -5,69 +5,15 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/types/product";
 
-export default async function AdminOrdersPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
+const statuses = ["PENDING", "PAID", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED", "FAILED"];
+const statusTone: Record<string, string> = { PENDING: "bg-amber-100 text-amber-800", PAID: "bg-emerald-100 text-emerald-800", SHIPPED: "bg-sky-100 text-sky-800", DELIVERED: "bg-emerald-100 text-emerald-800", CANCELLED: "bg-soft-200 text-soft-600", REFUNDED: "bg-violet-100 text-violet-800", FAILED: "bg-red-100 text-red-700" };
+
+export default async function AdminOrdersPage({ searchParams }: { searchParams: Promise<{ status?: string; q?: string }> }) {
   const session = await getServerSession(authOptions);
-  const role = (session?.user as { role?: string } | undefined)?.role;
-  if (role !== "ADMIN") redirect("/");
-
-  const statuses = ["PENDING", "PAID", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED", "FAILED"];
-  const { status: filter } = await searchParams;
-
-  const orders = await prisma.order.findMany({
-    where: filter ? { status: filter as never } : undefined,
-    include: { user: { select: { name: true, email: true } }, items: true },
-    orderBy: { createdAt: "desc" }
-  });
-
-  return (
-    <div>
-      <h1 className="mb-4 text-xl font-semibold">Orders</h1>
-
-      <div className="mb-4 flex flex-wrap gap-2 text-sm">
-        <Link href="/admin/orders" className={`border px-3 py-1 ${!filter ? "border-black" : "border-gray-300"}`}>
-          All
-        </Link>
-        {statuses.map((s) => (
-          <Link
-            key={s}
-            href={`/admin/orders?status=${s}`}
-            className={`border px-3 py-1 ${filter === s ? "border-black" : "border-gray-300"}`}
-          >
-            {s}
-          </Link>
-        ))}
-      </div>
-
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b text-left">
-            <th className="py-2">Order</th>
-            <th>Customer</th>
-            <th>Items</th>
-            <th>Total</th>
-            <th>Status</th>
-            <th>Placed</th>
-          </tr>
-        </thead>
-        <tbody>
-          {orders.map((o) => (
-            <tr key={o.id} className="border-b">
-              <td className="py-2">
-                <Link href={`/admin/orders/${o.id}`} className="underline">
-                  {o.id.slice(0, 8)}
-                </Link>
-              </td>
-              <td>{o.user.name ?? o.user.email}</td>
-              <td>{o.items.reduce((s, i) => s + i.quantity, 0)}</td>
-              <td>{formatPrice(o.totalAmount, o.currency)}</td>
-              <td>{o.status}</td>
-              <td>{new Date(o.createdAt).toLocaleDateString()}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {orders.length === 0 && <p className="mt-4 text-gray-600">No orders match this filter.</p>}
-    </div>
-  );
+  if ((session?.user as { role?: string } | undefined)?.role !== "ADMIN") redirect("/");
+  const { status, q } = await searchParams;
+  const orders = await prisma.order.findMany({ where: { ...(status ? { status: status as never } : {}), ...(q ? { OR: [{ id: { contains: q } }, { user: { email: { contains: q, mode: "insensitive" } } }, { user: { name: { contains: q, mode: "insensitive" } } }] } : {}) }, include: { user: { select: { name: true, email: true } }, items: true }, orderBy: { createdAt: "desc" } });
+  return <div><div className="mb-8"><p className="text-[10px] uppercase tracking-[0.18em] text-soft-400">Operations / fulfillment</p><h1 className="mt-2 text-3xl font-semibold tracking-tight text-soft-700">Orders.</h1><p className="mt-2 text-sm text-soft-500">Keep every delivery moving.</p></div><form className="mb-4 flex flex-col gap-3 sm:flex-row"><input name="q" defaultValue={q} placeholder="Search order ID or customer" className="input-soft py-2.5 sm:max-w-sm" /><input type="hidden" name="status" value={status ?? ""} /><button className="btn-secondary py-2.5">Search</button></form><div className="mb-6 flex gap-2 overflow-x-auto pb-1">{[["", "All"], ...statuses.map((item) => [item, item])].map(([value, label]) => <Link key={label} href={`/admin/orders?status=${value}${q ? `&q=${encodeURIComponent(q)}` : ""}`} className={`whitespace-nowrap rounded-full px-3 py-2 text-xs ${status === value || (!status && !value) ? "bg-soft-700 text-white" : "bg-white/60 text-soft-500 hover:bg-white"}`}>{label}</Link>)}</div><div className="space-y-3 md:hidden">{orders.map((order) => <Link key={order.id} href={`/admin/orders/${order.id}`} className="glass block rounded-2xl p-4"><div className="flex justify-between gap-4"><div><p className="font-medium text-soft-700">#{order.id.slice(0, 8)}</p><p className="mt-1 text-xs text-soft-400">{order.user.name ?? order.user.email}</p></div><Badge status={order.status} /></div><div className="mt-4 flex justify-between text-sm"><span className="text-soft-500">{order.items.reduce((sum, item) => sum + item.quantity, 0)} items · {order.paymentProvider}</span><span className="font-medium text-soft-700">{formatPrice(order.totalAmount, order.currency)}</span></div></Link>)}</div><div className="hidden overflow-x-auto rounded-2xl border border-soft-200/70 bg-white/45 md:block"><table className="w-full text-left text-sm"><thead className="border-b border-soft-200/70 text-xs uppercase tracking-wider text-soft-400"><tr><th className="px-5 py-4">Order</th><th>Customer</th><th>Items</th><th>Payment</th><th>Total</th><th>Status</th><th>Placed</th></tr></thead><tbody className="divide-y divide-soft-200/60">{orders.map((order) => <tr key={order.id}><td className="px-5 py-4"><Link href={`/admin/orders/${order.id}`} className="font-medium text-soft-700 underline underline-offset-4">#{order.id.slice(0, 8)}</Link></td><td className="text-soft-500">{order.user.name ?? order.user.email}</td><td className="text-soft-500">{order.items.reduce((sum, item) => sum + item.quantity, 0)}</td><td className="text-xs text-soft-500">{order.paymentProvider}</td><td className="text-soft-600">{formatPrice(order.totalAmount, order.currency)}</td><td><Badge status={order.status} /></td><td className="pr-5 text-xs text-soft-400">{new Date(order.createdAt).toLocaleDateString()}</td></tr>)}</tbody></table></div>{orders.length === 0 && <div className="glass mt-4 rounded-2xl p-10 text-center text-sm text-soft-500">No orders match these filters.</div>}</div>;
 }
+
+function Badge({ status }: { status: string }) { return <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] uppercase tracking-wider ${statusTone[status] ?? "bg-soft-200 text-soft-600"}`}>{status}</span>; }

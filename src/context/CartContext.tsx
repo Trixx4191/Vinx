@@ -6,6 +6,7 @@ export type CartItem = {
   variantId: string;
   productSlug: string;
   name: string;
+  frontImageUrl?: string;
   size: string;
   color: string;
   price: number; // minor units, snapshot at add-time

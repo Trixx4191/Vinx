@@ -26,40 +26,41 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
   return (
     <div className="grid gap-8 md:grid-cols-2">
       <div>
-        <h1 className="mb-2 text-xl font-semibold">Order {order.id.slice(0, 8)}</h1>
-        <p className="mb-4 text-sm text-gray-600">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-soft-400">Fulfillment / order</p>
+        <h1 className="mb-2 mt-2 text-3xl font-semibold tracking-tight text-soft-700">#{order.id.slice(0, 8)}</h1>
+        <p className="mb-6 text-sm text-soft-500">
           {order.user.name ?? "Customer"} — {order.user.email}
         </p>
 
-        <div className="mb-6">
-          <h2 className="mb-2 font-medium">Items</h2>
+        <div className="glass mb-4 rounded-3xl p-5">
+          <h2 className="mb-4 text-lg font-medium text-soft-700">Items</h2>
           {order.items.map((item) => (
             <div key={item.id} className="flex justify-between text-sm">
-              <span>
+              <span className="text-sm text-soft-600">
                 {item.variant.product.name} ({item.variant.size}/{item.variant.color}) x{item.quantity}
               </span>
-              <span>{formatPrice(item.priceAtPurchase * item.quantity, order.currency)}</span>
+              <span className="text-sm text-soft-700">{formatPrice(item.priceAtPurchase * item.quantity, order.currency)}</span>
             </div>
           ))}
-          <div className="mt-2 flex justify-between border-t border-gray-200 pt-2 font-medium">
+          <div className="mt-4 flex justify-between border-t border-soft-200 pt-3 font-medium text-soft-700">
             <span>Total</span>
             <span>{formatPrice(order.totalAmount, order.currency)}</span>
           </div>
-          <p className="mt-1 text-xs text-gray-500">Payment via {order.paymentProvider}, ref: {order.paymentRef ?? "—"}</p>
+          <p className="mt-3 text-xs text-soft-400">Payment via {order.paymentProvider}, ref: {order.paymentRef ?? "—"}</p>
         </div>
 
-        <div className="mb-6">
-          <h2 className="mb-2 font-medium">Shipping to</h2>
-          <p className="text-sm text-gray-600">
+        <div className="glass mb-4 rounded-3xl p-5">
+          <h2 className="mb-2 text-lg font-medium text-soft-700">Shipping to</h2>
+          <p className="text-sm leading-relaxed text-soft-500">
             {order.address.fullName}, {order.address.phone}
             <br />
             {order.address.line1}, {order.address.city}, {order.address.region}
           </p>
         </div>
 
-        <div>
-          <h2 className="mb-2 font-medium">Status history</h2>
-          <ul className="text-sm text-gray-600">
+        <div className="glass rounded-3xl p-5">
+          <h2 className="mb-4 text-lg font-medium text-soft-700">Status timeline</h2>
+          <ul className="space-y-3 text-sm text-soft-500">
             {order.statusHistory.map((event) => (
               <li key={event.id}>
                 {new Date(event.createdAt).toLocaleString()} — {event.status}
@@ -71,13 +72,14 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
       </div>
 
       <div>
-        <h2 className="mb-2 font-medium">Update order</h2>
+        <h2 className="mb-3 text-lg font-medium text-soft-700">Update order</h2>
         <OrderUpdateForm
           orderId={order.id}
           currentStatus={order.status}
           currentCarrier={order.carrier}
           currentTrackingNumber={order.trackingNumber}
           currentTrackingUrl={order.trackingUrl}
+          currentEstimatedDelivery={order.estimatedDelivery}
         />
       </div>
     </div>

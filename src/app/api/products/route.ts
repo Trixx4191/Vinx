@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 export async function GET(req: NextRequest) {
   const category = req.nextUrl.searchParams.get("category");
 
-  const products = await prisma.product.findMany({
+  const [products, categories] = await Promise.all([
+    prisma.product.findMany({
     where: {
       isPublished: true,
       ...(category ? { category: { slug: category } } : {})
@@ -16,7 +17,9 @@ export async function GET(req: NextRequest) {
       }
     },
     orderBy: { createdAt: "desc" }
-  });
+    }),
+    prisma.category.findMany({ select: { name: true, slug: true }, orderBy: { name: "asc" } })
+  ]);
 
-  return NextResponse.json({ products });
+  return NextResponse.json({ products, categories });
 }

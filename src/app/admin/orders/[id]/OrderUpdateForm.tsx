@@ -11,6 +11,7 @@ type Props = {
   currentCarrier: string | null;
   currentTrackingNumber: string | null;
   currentTrackingUrl: string | null;
+  currentEstimatedDelivery: Date | null;
 };
 
 export default function OrderUpdateForm({
@@ -18,13 +19,15 @@ export default function OrderUpdateForm({
   currentStatus,
   currentCarrier,
   currentTrackingNumber,
-  currentTrackingUrl
+  currentTrackingUrl,
+  currentEstimatedDelivery
 }: Props) {
   const router = useRouter();
   const [status, setStatus] = useState(currentStatus);
   const [carrier, setCarrier] = useState(currentCarrier ?? "");
   const [trackingNumber, setTrackingNumber] = useState(currentTrackingNumber ?? "");
   const [trackingUrl, setTrackingUrl] = useState(currentTrackingUrl ?? "");
+  const [estimatedDelivery, setEstimatedDelivery] = useState(currentEstimatedDelivery ? new Date(currentEstimatedDelivery).toISOString().slice(0, 10) : "");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -37,7 +40,7 @@ export default function OrderUpdateForm({
     const res = await fetch(`/api/admin/orders/${orderId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status, carrier, trackingNumber, trackingUrl, note })
+      body: JSON.stringify({ status, carrier, trackingNumber, trackingUrl, estimatedDelivery: estimatedDelivery ? `${estimatedDelivery}T00:00:00.000Z` : "", note })
     });
 
     setLoading(false);
@@ -52,10 +55,11 @@ export default function OrderUpdateForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 border border-gray-300 p-4">
+    <form onSubmit={handleSubmit} className="glass rounded-3xl p-5 sm:p-6">
+      <p className="mb-5 rounded-2xl bg-white/60 p-3 text-sm text-soft-600">Next recommended step: <strong>{currentStatus === "PENDING" ? "confirm payment" : currentStatus === "PAID" ? "prepare shipment" : currentStatus === "SHIPPED" ? "add delivery confirmation" : "review order status"}</strong></p>
       <div>
-        <label className="block text-sm">Status</label>
-        <select value={status} onChange={(e) => setStatus(e.target.value)} className="mt-1 w-full border border-gray-300 px-3 py-2">
+        <label className="field-label">Status</label>
+        <select value={status} onChange={(e) => setStatus(e.target.value)} className="input-soft">
           {STATUSES.map((s) => (
             <option key={s} value={s}>
               {s}
@@ -65,24 +69,22 @@ export default function OrderUpdateForm({
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm">Carrier</label>
-          <input value={carrier} onChange={(e) => setCarrier(e.target.value)} className="mt-1 w-full border border-gray-300 px-3 py-2" />
+          <label className="block"><span className="field-label">Carrier</span><input value={carrier} onChange={(e) => setCarrier(e.target.value)} className="input-soft" /></label>
         </div>
         <div>
-          <label className="block text-sm">Tracking number</label>
-          <input value={trackingNumber} onChange={(e) => setTrackingNumber(e.target.value)} className="mt-1 w-full border border-gray-300 px-3 py-2" />
+          <label className="block"><span className="field-label">Tracking number</span><input value={trackingNumber} onChange={(e) => setTrackingNumber(e.target.value)} className="input-soft" /></label>
         </div>
       </div>
       <div>
-        <label className="block text-sm">Tracking URL</label>
-        <input value={trackingUrl} onChange={(e) => setTrackingUrl(e.target.value)} className="mt-1 w-full border border-gray-300 px-3 py-2" />
+        <label className="block"><span className="field-label">Tracking URL</span><input value={trackingUrl} onChange={(e) => setTrackingUrl(e.target.value)} className="input-soft" /></label>
       </div>
+      <label className="block"><span className="field-label">Estimated delivery</span><input type="date" value={estimatedDelivery} onChange={(e) => setEstimatedDelivery(e.target.value)} className="input-soft" /></label>
       <div>
-        <label className="block text-sm">Note (optional, shown in status history)</label>
-        <input value={note} onChange={(e) => setNote(e.target.value)} className="mt-1 w-full border border-gray-300 px-3 py-2" />
+        <label className="field-label">Note</label>
+        <input value={note} onChange={(e) => setNote(e.target.value)} className="input-soft" placeholder="Optional note for the timeline" />
       </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <button type="submit" disabled={loading} className="bg-black px-6 py-2 text-sm text-white disabled:bg-gray-300">
+      {error && <p className="rounded-2xl bg-red-50/80 p-3 text-sm text-red-700">{error}</p>}
+      <button type="submit" disabled={loading} className="btn-primary w-full py-3 disabled:opacity-60">
         {loading ? "Saving..." : "Save changes"}
       </button>
     </form>

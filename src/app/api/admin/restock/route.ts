@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     for (const row of rows) {
       const variant = await prisma.productVariant.findUnique({ where: { sku: row.sku } });
       if (!variant) {
-        errors.push(`SKU not found: ${row.sku}`);
+        errors.push(`SKU ${row.sku}: not found`);
         continue;
       }
 
@@ -62,6 +62,10 @@ export async function POST(req: NextRequest) {
       skus: results.map((r) => r.sku)
     });
 
-    return NextResponse.json({ updated: results.length, errors });
+    return NextResponse.json({
+      updated: results.length,
+      errors,
+      variants: results.map((variant) => ({ sku: variant.sku, quantity: variant.quantity, inStock: variant.inStock }))
+    });
   });
 }
