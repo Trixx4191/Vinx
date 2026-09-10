@@ -164,7 +164,20 @@ or cancelled, but it can't rewrite what was charged or what was ordered;
 those stay locked to whatever checkout and payment verification originally
 set.
 
+## The smaller items, now done
+
+**PayPal** — same pattern as Paystack/Stripe: `/api/payments/paypal/create-order` takes only an `orderId`, creates the PayPal order server-side using the database amount, and redirects to PayPal's approval page. `/api/payments/paypal/callback` captures server-to-server and only calls `markOrderPaid` after PayPal confirms `COMPLETED` status and the captured amount matches.
+
+**Admin 2FA (TOTP)** — enforced specifically for admin accounts, since that's the highest-value target:
+- `/admin/security` lets an admin scan a QR code (via `otplib` + `qrcode`) and confirm a code before 2FA actually turns on — so a botched scan can't lock the account out.
+- Once enabled, `src/lib/auth.ts`'s login check requires a valid 6-digit code in addition to the password. The login page reveals a second field only after the password already checked out, rather than asking for it upfront (keeps normal customer login unchanged).
+- Disabling 2FA requires a currently-valid code too — a hijacked session alone can't strip the account's protection.
+- Every enable/disable is logged to `AdminAuditLog`.
+
+**Real image upload** — `src/lib/storage.ts` generates presigned S3-compatible upload URLs (works with AWS S3, Cloudflare R2, DigitalOcean Spaces — set `S3_ENDPOINT` for the latter two). The admin product form now has real file inputs: the browser gets a presigned URL from `/api/admin/uploads/presign` (admin-gated) and PUTs the file straight to storage — image bytes never pass through our server. The storage key is always server-generated (`products/<uuid>.<ext>`), never taken from the client's filename, so there's no path-traversal or overwrite risk.
+
+**Admin IP allowlist** — optional, off by default. Set `ADMIN_IP_ALLOWLIST` (comma-separated IPs) once you have a static office/VPN IP, and `/admin` becomes unreachable from anywhere else — checked in `src/middleware.ts` before login/role even come into play.
+
 ## Next phases
 
 - **Phase 4**: your custom UI direction applied across every page
-- **Later**: PayPal integration, 2FA for admin accounts, real image upload (S3/Cloudinary), IP allowlisting for `/admin`

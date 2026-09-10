@@ -31,6 +31,10 @@ export default async function AdminHome() {
           <p className="font-medium">Bulk restock</p>
           <p className="text-sm text-gray-600">Upload SKU/quantity to update stock</p>
         </Link>
+        <Link href="/admin/security" className="border border-gray-300 p-4 hover:border-black">
+          <p className="font-medium">Security</p>
+          <p className="text-sm text-gray-600">Set up two-factor authentication</p>
+        </Link>
       </div>
     </div>
   );

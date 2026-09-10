@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import ImageUploadField from "@/components/ImageUploadField";
 
 type VariantRow = { size: string; color: string; sku: string; quantity: number };
 
@@ -31,6 +32,12 @@ export default function NewProductPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (!frontImageUrl || !backImageUrl) {
+      setError("Upload both a front and back image first");
+      return;
+    }
+
     setLoading(true);
 
     const res = await fetch("/api/admin/products", {
@@ -86,15 +93,8 @@ export default function NewProductPage() {
           <input value={categorySlug} onChange={(e) => setCategorySlug(e.target.value)} placeholder="t-shirts" required className="mt-1 w-full border border-gray-300 px-3 py-2" />
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm">Front image URL</label>
-            <input value={frontImageUrl} onChange={(e) => setFrontImageUrl(e.target.value)} required className="mt-1 w-full border border-gray-300 px-3 py-2" />
-            <p className="mt-1 text-xs text-gray-500">Upload to cloud storage first; paste the resulting URL here.</p>
-          </div>
-          <div>
-            <label className="block text-sm">Back image URL</label>
-            <input value={backImageUrl} onChange={(e) => setBackImageUrl(e.target.value)} required className="mt-1 w-full border border-gray-300 px-3 py-2" />
-          </div>
+          <ImageUploadField label="Front image" value={frontImageUrl} onChange={setFrontImageUrl} />
+          <ImageUploadField label="Back image" value={backImageUrl} onChange={setBackImageUrl} />
         </div>
 
         <div>

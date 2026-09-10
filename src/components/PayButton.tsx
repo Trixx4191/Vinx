@@ -17,13 +17,7 @@ export default function PayButton({ orderId, provider }: Props) {
         ? "/api/payments/paystack/initialize"
         : provider === "STRIPE"
         ? "/api/payments/stripe/create-session"
-        : null;
-
-    if (!endpoint) {
-      setError("PayPal isn't wired up yet — pick Paystack or Stripe for now.");
-      setLoading(false);
-      return;
-    }
+        : "/api/payments/paypal/create-order";
 
     // Note: only orderId goes in this request. The server looks up the
     // amount to charge itself — this page has no way to influence it.
