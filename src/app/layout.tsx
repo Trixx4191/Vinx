@@ -16,7 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="bg-layer" aria-hidden />
         <Providers>
           <Navbar />
-          <main className="relative mx-auto min-h-[calc(100vh-5rem)] max-w-6xl px-4 pb-16 pt-8 sm:px-6 lg:px-8">
+          <main className="relative mx-auto min-h-[calc(100vh-5rem)] max-w-[1400px] px-5 pb-16 pt-6 sm:px-8 lg:px-12">
             <div className="page-enter">{children}</div>
           </main>
         </Providers>

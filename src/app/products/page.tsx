@@ -15,13 +15,13 @@ export default async function ProductsPage() {
 
   return (
     <div className="page-enter">
-      <div className="mb-10 text-center sm:text-left">
-        <h1 className="text-2xl font-semibold tracking-tight text-soft-700 sm:text-3xl">
-          Shop
-        </h1>
-        <p className="mt-1 text-sm text-soft-500">
-          Soft layers and considered essentials
-        </p>
+      <div className="mb-10 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-soft-400">Vinx / collection 01</p>
+          <h1 className="mt-3 text-4xl font-semibold tracking-tight text-soft-700 sm:text-5xl">The essentials.</h1>
+          <p className="mt-3 max-w-md text-sm leading-relaxed text-soft-500">Soft layers and considered essentials for the days that do not need a uniform.</p>
+        </div>
+        <span className="text-sm text-soft-400">{products.length} pieces</span>
       </div>
 
       {products.length === 0 ? (

@@ -43,17 +43,17 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   }
 
   return (
-    <div className="grid gap-10 md:grid-cols-2 md:gap-14">
+    <div className="grid gap-8 md:grid-cols-[minmax(0,1.12fr)_minmax(340px,0.88fr)] md:gap-14">
       {/* Image column — clear Apple-style presentation */}
       <div className="space-y-4">
-        <div className="relative aspect-[3/4] overflow-hidden rounded-3xl bg-soft-100 shadow-soft">
+        <div className="product-stage relative aspect-[3/4]">
           <Image
             src={view === "front" ? product.frontImageUrl : product.backImageUrl}
             alt={product.name}
             fill
             priority
             sizes="(max-width: 768px) 100vw, 50vw"
-            className="object-cover transition-opacity duration-500 ease-apple"
+            className="object-contain p-5 transition-opacity duration-500 ease-apple sm:p-12"
           />
         </div>
         <div className="flex gap-2">
@@ -74,14 +74,15 @@ export default function ProductDetailClient({ product }: { product: Product }) {
       </div>
 
       {/* Info column */}
-      <div className="flex flex-col">
-        <h1 className="text-2xl font-semibold tracking-tight text-soft-700 sm:text-3xl">
+      <div className="glass-strong flex flex-col rounded-4xl p-6 sm:p-8 md:sticky md:top-28 md:h-fit">
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-soft-400">Vinx / {product.category?.name ?? "piece"}</p>
+        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-soft-700 sm:text-4xl">
           {product.name}
         </h1>
         <p className="mt-2 text-lg text-soft-500">
           {formatPrice(product.price, product.currency)}
         </p>
-        <p className="mt-5 text-sm leading-relaxed text-soft-600">
+        <p className="mt-6 text-sm leading-relaxed text-soft-600">
           {product.description}
         </p>
         {product.material && (

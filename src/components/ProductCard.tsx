@@ -7,20 +7,20 @@ export default function ProductCard({ product }: { product: Product }) {
 
   return (
     <Link href={`/products/${product.slug}`} className="group block">
-      <div className="relative aspect-[3/4] overflow-hidden rounded-3xl bg-soft-100 shadow-card transition-all duration-500 ease-apple-out group-hover:shadow-soft-lg group-hover:-translate-y-1">
+      <div className="product-stage aspect-[3/4] transition-all duration-500 ease-apple-out group-hover:shadow-soft-lg group-hover:-translate-y-1">
         <Image
           src={product.frontImageUrl}
           alt={product.name}
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          className="object-cover transition-opacity duration-500 ease-apple group-hover:opacity-0"
+          className="object-contain p-4 transition-opacity duration-500 ease-apple group-hover:opacity-0 sm:p-7"
         />
         <Image
           src={product.backImageUrl}
           alt={`${product.name} back view`}
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          className="absolute inset-0 object-cover opacity-0 transition-opacity duration-500 ease-apple group-hover:opacity-100"
+          className="absolute inset-0 object-contain p-4 opacity-0 transition-opacity duration-500 ease-apple group-hover:opacity-100 sm:p-7"
         />
         {!anyInStock && (
           <span className="absolute left-3 top-3 rounded-full bg-soft-700/90 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
