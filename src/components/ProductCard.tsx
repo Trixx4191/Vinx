@@ -7,7 +7,7 @@ export default function ProductCard({ product }: { product: Product }) {
 
   return (
     <Link href={`/products/${product.slug}`} className="group block">
-      <div className="product-stage aspect-[3/4] transition-all duration-500 ease-apple-out group-hover:shadow-soft-lg group-hover:-translate-y-1">
+      <div className="product-stage aspect-[3/4] transition-colors duration-500 group-hover:border-soft-500">
         <Image
           src={product.frontImageUrl}
           alt={product.name}
@@ -23,7 +23,7 @@ export default function ProductCard({ product }: { product: Product }) {
           className="absolute inset-0 object-contain p-4 opacity-0 transition-opacity duration-500 ease-apple group-hover:opacity-100 sm:p-7"
         />
         {!anyInStock && (
-          <span className="absolute left-3 top-3 rounded-full bg-soft-700/90 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+          <span className="absolute left-3 top-3 bg-white px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-soft-700">
             Out of stock
           </span>
         )}

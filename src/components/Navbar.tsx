@@ -24,12 +24,12 @@ export default function Navbar() {
     }`;
 
   return (
-    <header className="sticky top-0 z-50 px-5 pt-4 sm:px-8 lg:px-12">
-      <nav className="mx-auto flex max-w-[1400px] items-center justify-between border-b border-soft-300/60 bg-[#e9e6dc]/70 px-1 pb-3 text-[11px] backdrop-blur-xl sm:px-2">
-        <BrandMark className="text-[17px] transition-opacity duration-300 hover:opacity-70" />
+    <header className="sticky top-0 z-50 bg-[#f5f5f3]/95 px-5 pt-4 backdrop-blur-sm sm:px-8 lg:px-10">
+      <nav className="mx-auto flex max-w-[1600px] items-center justify-between border-b border-black px-1 pb-3 text-[11px] sm:px-2">
+        <BrandMark className="text-[16px] transition-opacity duration-300 hover:opacity-60" />
 
         <div className="flex items-center gap-1 sm:gap-5">
-          <span className="hidden text-soft-400 sm:inline">collection 01</span>
+          <span className="hidden text-soft-400 sm:inline">new collection</span>
           <Link href="/products" className={`${linkClass("/products")} px-2 py-1.5`}>
             shop
           </Link>

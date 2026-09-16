@@ -30,31 +30,36 @@ async function getCategories(): Promise<{ name: string; slug: string }[]> {
 
 export default async function HomePage() {
   const [products, categories] = await Promise.all([getFeaturedProducts(), getCategories()]);
+  const categoryImages = [
+    "https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?auto=format&fit=crop&w=900&q=85",
+    "https://images.unsplash.com/photo-1543076447-215ad9ba6923?auto=format&fit=crop&w=900&q=85",
+    "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=85",
+    "https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?auto=format&fit=crop&w=900&q=85"
+  ];
 
   return (
     <div className="flex flex-col">
-      <section className="hero-glass relative mt-2 min-h-[680px] overflow-hidden sm:min-h-[780px]">
-        <div className="absolute left-5 top-5 text-[10px] uppercase tracking-[0.16em] text-soft-400">main page</div>
-        <div className="absolute right-5 top-1/2 hidden -translate-y-1/2 rotate-90 text-[10px] uppercase tracking-[0.16em] text-soft-400 sm:block">vinx / 001</div>
-        <div className="absolute left-5 top-1/2 -translate-y-1/2 text-[10px] text-soft-500 [writing-mode:vertical-rl]">play introduction</div>
-        <div
-          className="absolute inset-0 bg-gradient-to-b from-white/5 via-transparent to-soft-700/5"
-          style={{
-            backgroundImage: "linear-gradient(180deg, rgba(255,255,255,0.05), rgba(18,31,24,0.05))"
-          }}
-        />
-        <div className="absolute left-1/2 top-1/2 w-full -translate-x-1/2 -translate-y-1/2 text-center">
-          <p className="text-[clamp(2.5rem,8vw,7rem)] font-semibold leading-none tracking-[-0.07em] text-soft-700/90">Vinx</p>
+      <section
+        className="hero-glass relative mt-2 min-h-[680px] overflow-hidden bg-cover bg-center sm:min-h-[780px]"
+        style={{ backgroundImage: "linear-gradient(180deg, rgba(0,0,0,0.04), rgba(0,0,0,0.28)), url('https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=1800&q=90')" }}
+      >
+        <div className="absolute left-5 top-5 text-[10px] uppercase tracking-[0.16em] text-white">main page / 001</div>
+        <div className="absolute right-5 top-1/2 hidden -translate-y-1/2 rotate-90 text-[10px] uppercase tracking-[0.16em] text-white sm:block">vinx / fall winter</div>
+        <div className="absolute bottom-6 left-5 text-[11px] font-medium text-white">The new collection</div>
+        <div className="absolute bottom-6 right-5 flex items-center gap-5 text-[10px] uppercase tracking-[0.12em] text-white">
+          <span>for her</span>
+          <span>for him</span>
+          <Link href="/products" className="border border-white px-4 py-2 transition-colors hover:bg-white hover:text-black">discover</Link>
         </div>
-        <div className="absolute bottom-6 left-5 text-[11px] font-medium text-soft-700">Vinx studio</div>
-        <Link href="/products" className="absolute bottom-6 right-5 rounded-full bg-soft-700 px-4 py-2 text-[10px] uppercase tracking-[0.12em] text-white transition-transform hover:-translate-y-0.5">shop women / men</Link>
       </section>
 
       <section className="mt-16 grid gap-3 sm:mt-24 sm:grid-cols-4">
         {categories.map((category, index) => (
-          <Link key={category.slug} href={`/products?category=${category.slug}`} className="group relative flex min-h-40 overflow-hidden border border-soft-300/60 bg-white/35 p-5 transition-colors hover:bg-white/65 sm:min-h-52">
+          <Link key={category.slug} href={`/products?category=${category.slug}`} className="group relative flex min-h-56 overflow-hidden bg-soft-200 p-5 sm:min-h-72">
+            <span className="absolute inset-0 bg-cover bg-center opacity-80 grayscale transition duration-700 group-hover:scale-105 group-hover:grayscale-0" style={{ backgroundImage: `url('${categoryImages[index % categoryImages.length]}')` }} />
+            <span className="absolute inset-0 bg-black/10 transition-colors group-hover:bg-black/0" />
             <span className="absolute right-4 top-4 text-[10px] text-soft-400">0{index + 1}</span>
-            <span className="mt-auto text-sm font-medium text-soft-700 transition-transform duration-500 group-hover:translate-x-1">{category.name}</span>
+            <span className="relative z-10 mt-auto text-sm font-medium text-white transition-transform duration-500 group-hover:translate-x-1">{category.name}</span>
           </Link>
         ))}
         {categories.length === 0 && <Link href="/products" className="group col-span-full border border-soft-300/60 bg-white/35 p-6 text-sm text-soft-600 hover:bg-white/65">Browse the collection <span className="ml-2 transition-transform group-hover:translate-x-1">→</span></Link>}

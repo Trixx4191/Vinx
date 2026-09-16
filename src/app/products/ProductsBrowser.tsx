@@ -37,11 +37,11 @@ export default function ProductsBrowser({ products, categories, initialCategory 
       <div className="border-y border-soft-300/60 py-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex gap-2 overflow-x-auto pb-1">
-            <button onClick={() => setCategory("all")} className={`whitespace-nowrap rounded-full px-4 py-2 text-xs transition-colors ${category === "all" ? "bg-soft-700 text-white" : "bg-white/60 text-soft-500 hover:bg-white"}`}>
+            <button onClick={() => setCategory("all")} className={`whitespace-nowrap border-b px-1 py-2 text-xs transition-colors ${category === "all" ? "border-soft-700 text-soft-700" : "border-transparent text-soft-500 hover:text-soft-700"}`}>
               All pieces
             </button>
             {categories.map((item) => (
-              <button key={item.slug} onClick={() => setCategory(item.slug)} className={`whitespace-nowrap rounded-full px-4 py-2 text-xs transition-colors ${category === item.slug ? "bg-soft-700 text-white" : "bg-white/60 text-soft-500 hover:bg-white"}`}>
+              <button key={item.slug} onClick={() => setCategory(item.slug)} className={`whitespace-nowrap border-b px-1 py-2 text-xs transition-colors ${category === item.slug ? "border-soft-700 text-soft-700" : "border-transparent text-soft-500 hover:text-soft-700"}`}>
                 {item.name}
               </button>
             ))}
