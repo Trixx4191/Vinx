@@ -40,10 +40,10 @@ export default function PayButton({ orderId, provider }: Props) {
 
   return (
     <div>
-      <button onClick={handlePay} disabled={loading} className="btn-primary disabled:opacity-60">
+      <button onClick={handlePay} disabled={loading} className="bg-black px-6 py-2 text-sm text-white disabled:bg-gray-300">
         {loading ? "Redirecting..." : "Pay now"}
       </button>
-      {error && <p className="mt-2 text-sm text-soft-500">{error}</p>}
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </div>
   );
 }
