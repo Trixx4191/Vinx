@@ -49,7 +49,7 @@ export default async function OrderDetailPage({ params, searchParams }: { params
       <p className="mb-6 text-sm text-gray-600">Order #{order.id}</p>
 
       {order.status === "PENDING" && (
-        <div className="mb-6 border border-gray-300 p-4">
+        <div className="mb-6 glass rounded-3xl p-4">
           <p className="mb-3 text-sm">Payment hasn&apos;t been completed yet.</p>
           <PayButton orderId={order.id} provider={order.paymentProvider} />
         </div>

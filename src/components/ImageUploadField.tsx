@@ -51,7 +51,7 @@ export default function ImageUploadField({ label, value, onChange }: Props) {
       <label className="block text-sm">{label}</label>
       <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFile} className="mt-1 w-full text-sm" />
       {uploading && <p className="mt-1 text-xs text-gray-500">Uploading...</p>}
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-xs text-soft-500">{error}</p>}
       {value && !uploading && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={value} alt={`${label} preview`} className="mt-2 h-32 w-24 object-cover" />
