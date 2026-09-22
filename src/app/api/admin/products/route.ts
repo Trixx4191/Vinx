@@ -57,6 +57,8 @@ export async function POST(req: NextRequest) {
         categoryId: category.id,
         frontImageUrl: data.frontImageUrl,
         backImageUrl: data.backImageUrl,
+        hoverVideoUrl: data.hoverVideoUrl ?? null,
+        galleryImages: data.galleryImages,
         isPublished: data.isPublished,
         variants: { create: data.variants }
       },

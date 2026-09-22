@@ -13,6 +13,9 @@ datasource db {
 enum Role {
   CUSTOMER
   ADMIN
+  // Everything ADMIN can do, plus managing staff: granting and revoking admin
+  // access. Only a SUPER_ADMIN can reach /admin/staff.
+  SUPER_ADMIN
 }
 
 enum OrderStatus {
@@ -93,6 +96,12 @@ model Product {
   category      Category         @relation(fields: [categoryId], references: [id])
   frontImageUrl String
   backImageUrl  String
+  // Optional short, muted, looping clip shown on card hover and as a gallery
+  // slot on the detail page. Nullable so every existing product stays valid.
+  hoverVideoUrl String?
+  // Extra detail shots beyond front/back — fabric close-ups, styling, scale.
+  // Defaults to empty so existing rows need no backfill.
+  galleryImages String[]         @default([])
   isPublished   Boolean          @default(true)
   variants      ProductVariant[]
   createdAt     DateTime         @default(now())

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import type { NextRequest } from "next/server";
+import { isAdminRole } from "@/lib/roles";
 
 // Optional IP allowlist for /admin, on top of everything else. If
 // ADMIN_IP_ALLOWLIST is unset, this check is skipped entirely (useful for
@@ -40,7 +41,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (isAdminRoute && token?.role !== "ADMIN") {
+  if (isAdminRoute && !isAdminRole(token?.role)) {
     return NextResponse.redirect(new URL("/", req.url));
   }
 

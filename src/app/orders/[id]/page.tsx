@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/types/product";
 import PayButton from "@/components/PayButton";
+import { isAdminRole } from "@/lib/roles";
 
 export default async function OrderDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ created?: string }> }) {
   const session = await getServerSession(authOptions);
@@ -26,7 +27,7 @@ export default async function OrderDetailPage({ params, searchParams }: { params
 
   // Ownership check: a customer can only ever see their own order, no
   // matter what ID is in the URL. Admins can see any order.
-  if (order.userId !== userId && role !== "ADMIN") notFound();
+  if (order.userId !== userId && !isAdminRole(role)) notFound();
 
   return (
     <div>

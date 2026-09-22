@@ -50,9 +50,52 @@ Central work: a back-office UI, not developer intervention.
 - `/admin/products/new` — create a product with variants
 - `/admin/restock` — paste SKU,quantity pairs to bulk-update stock in one submit
 
+### Roles
+
+| Role | Can do |
+| --- | --- |
+| `CUSTOMER` | Shop, check out, view their own orders. The only role signup can create. |
+| `ADMIN` | Everything in `/admin`: catalog, inventory, orders, activity. |
+| `SUPER_ADMIN` | All of the above, plus `/admin/staff` — granting and revoking admin access. |
+
+Create the first master admin from the CLI, since no admin exists yet to
+authorise one:
+
+```
+npm run create-admin -- --super you@example.com "a-strong-password" "Your Name"
+```
+
+Re-running it against an existing account resets that account's password and
+role, which is also the recovery path if the master admin is ever locked out.
+A password passed as an argument lands in shell history and is briefly visible
+to `ps`; pass `ADMIN_PASSWORD='…'` as an environment variable instead to avoid
+both.
+
+Every role check goes through `isAdminRole` / `isSuperAdminRole` in
+`src/lib/roles.ts` rather than comparing against the string `"ADMIN"`. That
+matters more than it looks: the literal comparison was previously written out
+by hand in thirteen places, and each one would have silently excluded
+`SUPER_ADMIN` the moment the role was added — including the 2FA gate in
+`src/lib/auth.ts`, where excluding it would have let the most privileged
+account in the system sign in on a password alone despite having 2FA enabled.
+
+**Revoking an admin does not delete the account.** It sets the role back to
+`CUSTOMER`. Their orders and their rows in `AdminAuditLog` both reference the
+user, and that log is append-only by design — deleting the account would either
+fail on those foreign keys or erase the history the log exists to preserve.
+Revoking removes every privilege while keeping the record of what the account
+did.
+
+Two lockout guards sit on role changes, enforced in the API rather than only in
+the UI: you cannot change your own role, and the last remaining `SUPER_ADMIN`
+cannot be demoted or revoked. The second runs inside a `Serializable`
+transaction, because it is a read-then-write — two masters demoting each other
+at the same instant would otherwise both read a count of two, both succeed, and
+leave the system with no master admin at all.
+
 **How access is locked down (defense in depth — every layer checked independently):**
 
-1. **No signup path to admin.** `POST /api/auth/signup` always creates `role: CUSTOMER`, with no field a client can set to change that. The only way to create an admin is `npm run create-admin -- email "password" "Name"` — a script run directly against the database, not reachable over HTTP.
+1. **No signup path to admin.** `POST /api/auth/signup` always creates `role: CUSTOMER`, with no field a client can set to change that. The first admin can only be created by `npm run create-admin` — a script run directly against the database, not reachable over HTTP. After that, a `SUPER_ADMIN` can add staff from `/admin/staff`, which is itself gated on `requireSuperAdmin`, so a regular `ADMIN` can never promote themselves.
 2. **Route-level wall.** `src/middleware.ts` blocks `/admin/*` before the page renders for anyone without an `ADMIN`-role session token. A logged-in non-admin who tries to visit `/admin` is redirected straight to `/` — not shown a 403 page, so the admin area's existence isn't confirmed to them.
 3. **Page-level re-check.** Every admin page also calls `getServerSession` itself and redirects if the role isn't ADMIN — so even if middleware were ever misconfigured, the page still refuses to render.
 4. **API-level re-check.** Every `/api/admin/*` route calls `requireAdmin()` independently and returns a plain 404 (not 403) to an unauthorized caller, again to avoid confirming the route exists.
@@ -81,6 +124,95 @@ Assume everything shipped to the client — HTML, JS, CSS, and every API JSON re
 - **Security headers on every response** (`next.config.js`): HSTS, X-Frame-Options (blocks clickjacking iframes), X-Content-Type-Options, a locked-down Permissions-Policy, and a baseline Content-Security-Policy.
 - **CSRF**: NextAuth's own routes carry built-in CSRF tokens. Custom API routes rely on the session cookie's `SameSite=Lax` setting (NextAuth's default), which browsers exclude from cross-site POST requests — a real cross-site form/fetch can't ride along with a logged-in session.
 - **robots.txt** keeps `/admin`, `/account`, `/checkout`, and `/api` out of search engine indexes — not a security control by itself, but no reason to make those paths easy to stumble on.
+
+## Design system and product media
+
+The storefront uses a small set of shared primitives in
+`src/components/luxury/` — `Button`, `Heading`, `Kicker`, `Badge`, `Price`,
+`Section`, `ProductGrid`, `ImageGallery`, form fields and skeletons. They are
+presentation-only and carry no product knowledge; the product tile itself lives
+in `src/components/ProductCard.tsx` so there is exactly one definition of what
+a product looks like in a grid.
+
+Two deliberate constraints:
+
+- **The Tailwind `spacing` and `fontSize` scales are never redefined.**
+  Overriding a key like `4` or `sm` in `theme.extend` silently rewrites every
+  existing `p-4` and `text-sm` across the app at once. The luxury look comes
+  from the component layer instead.
+- **Headings use a serif face** (`Playfair Display`, loaded via `next/font` and
+  exposed as `--font-luxury`) with a system serif fallback, so headings still
+  render correctly if the font never loads.
+
+`Product` carries two optional media fields beyond `frontImageUrl` /
+`backImageUrl`:
+
+- `hoverVideoUrl` — a short muted MP4. On a product tile it plays on hover; on
+  the detail page it appears as the last gallery slot. The `<video>` element is
+  only mounted after a tile is first hovered, so a 20-product grid does not
+  start twenty downloads on page load, and `preload="none"` keeps even the
+  mounted element from fetching until playback starts. Touch devices never fire
+  hover and simply keep the still image.
+- `galleryImages` — up to eight extra detail shots, capped in both the Zod
+  schema and the admin form so the two can't disagree.
+
+`productMedia()` in `src/types/product.ts` builds the ordered media list from
+those fields, and both the tile and the detail gallery read from it, so they
+cannot drift apart on what counts as a product's media.
+
+Staff set both from `/admin/products/[id]` — no deploy needed. Uploads go
+through the same presigned-URL path as images; `src/lib/storage.ts` allows
+`video/mp4` alongside the image types and derives the storage key's extension
+from the validated content type rather than the client's filename, so a stored
+object's extension can never disagree with the `Content-Type` it is served
+under. Note that a presigned PUT cannot cap its own body size — the browser-side
+size check is a convenience, and a bucket policy is what actually bounds it.
+
+### Where the images and videos come from
+
+You supply them. Nothing in the storefront pulls product media from a stock or
+free image service at runtime — every image and video is uploaded by you and
+served from your own bucket.
+
+The only exceptions are the seed placeholders (`placehold.co`, plus one public
+sample clip), which exist so the catalog renders before you have real assets.
+They are demo data: overwritten the moment you edit a product in `/admin`, and
+`placehold.co` is only allowed as an image host in development.
+
+To add real media, set the `S3_*` variables in `.env` (see `.env.example`),
+then upload from `/admin/products/new` or `/admin/products/[id]`. Files go
+straight from your browser to your bucket without passing through the server.
+
+**Before you have a bucket**, uploads fall back to writing into
+`public/uploads` on your own machine, so the catalog can be filled in and
+reviewed locally. Three conditions must all hold for that path to accept a
+byte: the caller is an admin, `NODE_ENV` is `development`, and no real bucket
+is configured. It returns 404 otherwise — in production it must not exist,
+since writing into the deployment directory does not survive a redeploy and
+fails outright on the read-only filesystems most hosts use. `public/uploads`
+is gitignored; move to a bucket before deploying.
+
+Note that presigning an S3 upload is pure local cryptography and never
+contacts S3, so a wrong bucket or endpoint produces a valid-looking signature
+and fails only later, in the browser. `isS3Configured()` therefore checks for
+the `.env.example` placeholder values too, rather than merely for a non-empty
+string.
+
+Rough specs:
+
+| Slot | Format | Size | Notes |
+| --- | --- | --- | --- |
+| Front / back image | JPEG, PNG or WebP | ~1200–2000px wide, under 8MB | Required. 3:4 portrait matches the tile. |
+| Detail shots | same | same | Up to 8 per product. |
+| Hover video | MP4 (H.264) | 3–8s, under 25MB | Muted — it plays with no sound and no controls. |
+
+The browser-side size check is a convenience only; a presigned PUT cannot cap
+its own body size, so set a bucket-level limit before production.
+
+One header change was required for any of this to work: `next.config.js` now
+sets an explicit `media-src` in the CSP. Under the previous policy
+`default-src 'self'` silently blocked videos served from S3/R2 — the `<video>`
+simply never painted, with no error anywhere.
 
 ## Routing
 

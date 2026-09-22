@@ -5,5 +5,14 @@ out
 .env*.local
 *.log
 .DS_Store
-.env.example
+
+# Files uploaded through the development-only local storage fallback. These
+# are your working product shots, not source — they belong in a bucket, not in
+# the repository.
+public/uploads
+
+# .env.example is deliberately NOT ignored. It documents every variable with
+# placeholder values and is the file the README tells you to copy — ignoring it
+# meant it never shipped, so a fresh clone had nothing to copy from.
+!.env.example
 

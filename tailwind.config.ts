@@ -54,55 +54,26 @@ const config: Config = {
         luxury: ['"Playfair Display"', '"Garamond"', '"Georgia"', 'serif'],
         serif: ['"Playfair Display"', '"Garamond"', 'serif']
       },
-      fontSize: {
-        // NEW: Luxury type scale with headings
-        "h1": ["3.5rem", { lineHeight: "1.1", fontWeight: "700", letterSpacing: "-0.02em" }],
-        "h2": ["2.8rem", { lineHeight: "1.2", fontWeight: "600", letterSpacing: "-0.01em" }],
-        "h3": ["2.2rem", { lineHeight: "1.3", fontWeight: "600" }],
-        "h4": ["1.8rem", { lineHeight: "1.4", fontWeight: "500" }],
-        "h5": ["1.4rem", { lineHeight: "1.5", fontWeight: "600" }],
-        "h6": ["1.2rem", { lineHeight: "1.6", fontWeight: "600" }],
-        "body-lg": ["1.1rem", { lineHeight: "1.6", fontWeight: "400" }],
-        "body-md": ["1rem", { lineHeight: "1.6", fontWeight: "400" }],
-        "body-sm": ["0.875rem", { lineHeight: "1.5", fontWeight: "400" }],
-        "body-xs": ["0.75rem", { lineHeight: "1.5", fontWeight: "400" }],
-        "label": ["0.75rem", { lineHeight: "1.5", fontWeight: "500", letterSpacing: "0.08em", textTransform: "uppercase" }],
-        "caption": ["0.7rem", { lineHeight: "1.4", fontWeight: "400", letterSpacing: "0.05em", textTransform: "uppercase" }]
-      },
       letterSpacing: {
         luxury: "0.02em"
       },
-      spacing: {
-        // NEW: 8px base unit spacing
-        1: "0.5rem",
-        2: "1rem",
-        3: "1.5rem",
-        4: "2rem",
-        5: "2.5rem",
-        6: "3rem",
-        7: "4rem",
-        8: "5rem",
-        9: "6rem",
-        10: "8rem"
-      },
+      // NOTE: Tailwind's default `spacing` and `fontSize` scales are left
+      // untouched on purpose. Redefining keys like `4` or `sm` there rewrites
+      // every existing `p-4` / `text-sm` in the app at once — the luxury look
+      // comes from the component layer, not from silently resizing the scale.
       maxWidth: {
         container: "1400px"
       },
       borderRadius: {
         "2xl": "1rem",
         "3xl": "1.5rem",
-        "4xl": "2rem",
-        // NEW: Luxury sharp corners (border-radius: 0)
-        none: "0px"
+        "4xl": "2rem"
       },
       boxShadow: {
         glass: "0 8px 32px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04)",
         soft: "0 4px 24px rgba(0, 0, 0, 0.04)",
         "soft-lg": "0 12px 40px rgba(0, 0, 0, 0.06)",
-        card: "0 2px 12px rgba(0, 0, 0, 0.04)",
-        // NEW: Minimal luxury shadows
-        sm: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-        md: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)"
+        card: "0 2px 12px rgba(0, 0, 0, 0.04)"
       },
       backdropBlur: {
         glass: "20px"

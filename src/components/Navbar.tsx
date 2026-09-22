@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useCart } from "@/context/CartContext";
 import { usePathname } from "next/navigation";
+import { isAdminRole } from "@/lib/roles";
 import { HandbagIcon } from "@/components/HandbagIcon";
 import { AccountIcon } from "@/components/AccountIcon";
 import BrandMark from "@/components/BrandMark";
@@ -12,7 +13,7 @@ export default function Navbar() {
   const { data: session } = useSession();
   const { totalItems } = useCart();
   const pathname = usePathname();
-  const isAdmin = (session?.user as { role?: string } | undefined)?.role === "ADMIN";
+  const isAdmin = isAdminRole((session?.user as { role?: string } | undefined)?.role);
 
   if (pathname.startsWith("/admin")) return null;
 

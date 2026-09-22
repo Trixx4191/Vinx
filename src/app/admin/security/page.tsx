@@ -3,11 +3,12 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import SecurityForm from "./SecurityForm";
 import { prisma } from "@/lib/prisma";
+import { isAdminRole } from "@/lib/roles";
 
 export default async function AdminSecurityPage() {
   const session = await getServerSession(authOptions);
   const role = (session?.user as { role?: string } | undefined)?.role;
-  if (role !== "ADMIN") redirect("/");
+  if (!isAdminRole(role)) redirect("/");
   const userId = (session?.user as { id?: string } | undefined)?.id;
   if (!userId) redirect("/");
 

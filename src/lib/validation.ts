@@ -24,6 +24,32 @@ export const productVariantSchema = z.object({
   quantity: z.number().int().min(0)
 });
 
+// A media URL is either an absolute URL (the normal case — an object in your
+// bucket) or a root-relative /uploads/... path, which is what the
+// development-only local upload fallback produces. Plain `.url()` rejects the
+// relative form, so a locally uploaded image would fail validation on save.
+//
+// The relative branch is deliberately narrow: only /uploads/ and no "..", so
+// this can't be used to point a product at an arbitrary path on the site.
+const mediaUrl = z
+  .string()
+  .trim()
+  .max(2000)
+  .refine(
+    (value) =>
+      /^https?:\/\//.test(value)
+        ? z.string().url().safeParse(value).success
+        : value.startsWith("/uploads/") && !value.includes(".."),
+    { message: "Must be a valid URL or an /uploads/ path" }
+  );
+
+// An empty string from an untouched form field is normalised to "not set"
+// rather than rejected, so a blank optional input never blocks a save.
+const optionalMediaUrl = mediaUrl
+  .optional()
+  .or(z.literal(""))
+  .transform((value) => (value ? value : undefined));
+
 export const createProductSchema = z.object({
   name: z.string().trim().min(1).max(150),
   description: z.string().trim().min(1).max(5000),
@@ -31,10 +57,28 @@ export const createProductSchema = z.object({
   price: z.number().int().positive(), // minor units
   currency: z.string().trim().length(3).default("GHS"),
   categorySlug: z.string().trim().min(1),
-  frontImageUrl: z.string().url(),
-  backImageUrl: z.string().url(),
+  frontImageUrl: mediaUrl,
+  backImageUrl: mediaUrl,
+  hoverVideoUrl: optionalMediaUrl,
+  galleryImages: z.array(mediaUrl).max(8).default([]),
   variants: z.array(productVariantSchema).min(1),
   isPublished: z.boolean().default(true)
+});
+
+// Staff management. Only a SUPER_ADMIN can submit either of these.
+export const createStaffSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  email: z.string().trim().toLowerCase().email(),
+  password: passwordSchema,
+  role: z.enum(["ADMIN", "SUPER_ADMIN"])
+});
+
+// "Revoking" an admin sets them back to CUSTOMER rather than deleting the
+// user. Their orders and audit-log entries reference the row, and the audit
+// trail is append-only by design — deleting the account would either fail on
+// those foreign keys or erase history that exists precisely to be kept.
+export const updateStaffRoleSchema = z.object({
+  role: z.enum(["ADMIN", "SUPER_ADMIN", "CUSTOMER"])
 });
 
 export const restockRowSchema = z.object({

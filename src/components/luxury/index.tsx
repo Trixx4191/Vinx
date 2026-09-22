@@ -1,583 +1,418 @@
 /**
- * LUXURY COMPONENT LIBRARY
- * Based on Prada design system analysis + Vinx soft aesthetic
+ * Luxury primitives.
  *
- * Location: src/components/luxury/index.tsx
- * Import: import { Button, ProductCard, ... } from '@/components/luxury';
+ * These are presentation-only building blocks — layout, type, controls. They
+ * deliberately do NOT include a ProductCard: that one needs the real `Product`
+ * shape (front/back images, variants, GHS pricing via `formatPrice`) and lives
+ * in `src/components/ProductCard.tsx` so there is exactly one definition of
+ * what a product tile is.
+ *
+ * Import: import { Button, Section, Heading } from "@/components/luxury";
  */
 
-import React from 'react';
-import Image from 'next/image';
+"use client";
 
-// ============================================================================
-// 1. BUTTON COMPONENTS
-// ============================================================================
+import React from "react";
+import Image from "next/image";
+import type { MediaSlot } from "@/types/product";
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'link';
-  size?: 'sm' | 'md' | 'lg';
+// ---------------------------------------------------------------------------
+// Button
+// ---------------------------------------------------------------------------
+
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: "primary" | "secondary" | "link";
+  size?: "sm" | "md" | "lg";
   fullWidth?: boolean;
   loading?: boolean;
-}
+};
 
-export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  (
-    {
-      variant = 'primary',
-      size = 'md',
-      fullWidth = false,
-      loading = false,
-      disabled = false,
-      className = '',
-      children,
-      ...props
-    },
-    ref
-  ) => {
-    const baseStyles = 'font-semibold uppercase tracking-widest transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed';
+const BUTTON_VARIANTS: Record<NonNullable<ButtonProps["variant"]>, string> = {
+  primary:
+    "border border-soft-700 bg-soft-700 text-white hover:border-black hover:bg-black disabled:border-soft-300 disabled:bg-soft-300",
+  secondary:
+    "border border-soft-300 bg-transparent text-soft-700 hover:border-soft-700 hover:bg-soft-700 hover:text-white disabled:border-soft-200 disabled:text-soft-400",
+  link: "border-0 border-b border-soft-700 px-0 text-soft-700 hover:opacity-60"
+};
 
-    const variants = {
-      primary: 'bg-black text-white border-2 border-black hover:bg-gray-800 hover:border-gray-800 active:bg-black',
-      secondary: 'bg-transparent text-black border-2 border-black hover:bg-gray-100 active:bg-gray-200',
-      link: 'bg-transparent text-black border-b border-black border-solid hover:opacity-70 active:opacity-50 px-0',
-    };
+const BUTTON_SIZES: Record<NonNullable<ButtonProps["size"]>, string> = {
+  sm: "px-4 py-2 text-[10px]",
+  md: "px-6 py-3 text-xs",
+  lg: "px-8 py-4 text-xs"
+};
 
-    const sizes = {
-      sm: 'px-4 py-2 text-sm',
-      md: 'px-10 py-4 text-base',
-      lg: 'px-12 py-5 text-lg',
-    };
-
-    return (
-      <button
-        ref={ref}
-        disabled={disabled || loading}
-        className={`
-          ${baseStyles}
-          ${variants[variant]}
-          ${sizes[size]}
-          ${fullWidth ? 'w-full' : ''}
-          ${className}
-        `}
-        {...props}
-      >
-        {loading ? (
-          <span className="inline-flex items-center gap-2">
-            <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
-            {children}
-          </span>
-        ) : (
-          children
-        )}
-      </button>
-    );
-  }
-);
-
-Button.displayName = 'Button';
-
-// ============================================================================
-// 2. PRODUCT CARD
-// ============================================================================
-
-interface ProductCardProps {
-  id: string;
-  title: string;
-  collection: string;
-  price: number;
-  description?: string;
-  image: string;
-  imageAlt: string;
-  video?: string;
-  onClick?: () => void;
-}
-
-export const ProductCard: React.FC<ProductCardProps> = ({
-  id,
-  title,
-  collection,
-  price,
-  description,
-  image,
-  imageAlt,
-  video,
-  onClick,
-}) => {
-  const [isVideoPlaying, setIsVideoPlaying] = React.useState(false);
-
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  { variant = "primary", size = "md", fullWidth, loading, disabled, className = "", children, ...props },
+  ref
+) {
   return (
-    <article
-      className="product-card-luxury flex flex-col bg-white"
-      onClick={onClick}
+    <button
+      ref={ref}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
+      className={`inline-flex items-center justify-center gap-2 rounded-none font-medium uppercase tracking-[0.14em]
+        transition-colors duration-300
+        focus:outline-none focus-visible:ring-1 focus-visible:ring-soft-700 focus-visible:ring-offset-2
+        disabled:cursor-not-allowed
+        ${BUTTON_VARIANTS[variant]} ${BUTTON_SIZES[size]} ${fullWidth ? "w-full" : ""} ${className}`}
+      {...props}
     >
-      {/* Image & Video Container */}
-      <div className="relative w-full aspect-square overflow-hidden bg-gray-100 group">
-        {/* Image */}
-        <Image
-          src={image}
-          alt={imageAlt}
-          fill
-          className="object-cover w-full h-full group-hover:opacity-0 transition-opacity duration-300"
-          priority
-        />
-
-        {/* Video (hover) */}
-        {video && (
-          <video
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-            onMouseEnter={() => setIsVideoPlaying(true)}
-            onMouseLeave={() => setIsVideoPlaying(false)}
-          >
-            <source src={video} type="video/mp4" />
-          </video>
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 flex flex-col justify-start p-6">
-        {/* Collection Label */}
-        <p className="text-label text-gray-500 mb-2">{collection}</p>
-
-        {/* Product Title */}
-        <h3 className="text-body-lg font-luxury font-medium mb-2 line-clamp-2 leading-snug">
-          {title}
-        </h3>
-
-        {/* Price */}
-        <p className="text-body-md font-semibold text-black mb-2">
-          ${(price / 100).toFixed(2)}
-        </p>
-
-        {/* Description */}
-        {description && (
-          <p className="text-body-sm text-gray-500 line-clamp-2">
-            {description}
-          </p>
-        )}
-      </div>
-    </article>
-  );
-};
-
-// ============================================================================
-// 3. IMAGE GALLERY WITH THUMBNAIL SELECTOR
-// ============================================================================
-
-interface ImageGalleryProps {
-  images: Array<{ src: string; alt: string }>;
-  videos?: Array<{ src: string; alt: string }>;
-  onImageChange?: (index: number) => void;
-}
-
-export const ImageGallery: React.FC<ImageGalleryProps> = ({
-  images,
-  videos,
-  onImageChange,
-}) => {
-  const [mainImageIndex, setMainImageIndex] = React.useState(0);
-  const [showVideo, setShowVideo] = React.useState(false);
-
-  const handleThumbnailClick = (index: number) => {
-    setMainImageIndex(index);
-    setShowVideo(false);
-    onImageChange?.(index);
-  };
-
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-      {/* Main Image/Video */}
-      <div className="lg:col-span-4">
-        <div className="relative aspect-square bg-gray-100 overflow-hidden">
-          {showVideo && videos?.[mainImageIndex] ? (
-            <video
-              src={videos[mainImageIndex].src}
-              alt={videos[mainImageIndex].alt}
-              autoPlay
-              muted
-              loop
-              playsInline
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <Image
-              src={images[mainImageIndex].src}
-              alt={images[mainImageIndex].alt}
-              fill
-              className="w-full h-full object-cover"
-              priority
-            />
-          )}
-        </div>
-      </div>
-
-      {/* Thumbnails */}
-      <div className="flex lg:flex-col gap-3 overflow-x-auto lg:overflow-x-visible">
-        {/* Image Thumbnails */}
-        {images.map((img, idx) => (
-          <button
-            key={`img-${idx}`}
-            onClick={() => handleThumbnailClick(idx)}
-            className={`flex-shrink-0 w-20 h-20 lg:w-24 lg:h-24 border-2 transition-colors duration-300 overflow-hidden ${
-              mainImageIndex === idx && !showVideo
-                ? 'border-black'
-                : 'border-gray-200 hover:border-gray-400'
-            }`}
-          >
-            <Image
-              src={img.src}
-              alt={img.alt}
-              width={96}
-              height={96}
-              className="w-full h-full object-cover"
-            />
-          </button>
-        ))}
-
-        {/* Video Thumbnail */}
-        {videos?.[mainImageIndex] && (
-          <button
-            onClick={() => setShowVideo(!showVideo)}
-            className={`flex-shrink-0 w-20 h-20 lg:w-24 lg:h-24 border-2 bg-black transition-colors duration-300 flex items-center justify-center ${
-              showVideo ? 'border-black' : 'border-gray-200 hover:border-gray-400'
-            }`}
-          >
-            <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </button>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// ============================================================================
-// 4. FORM INPUTS
-// ============================================================================
-
-interface FormGroupProps {
-  label: string;
-  required?: boolean;
-  error?: string;
-  children: React.ReactNode;
-}
-
-export const FormGroup: React.FC<FormGroupProps> = ({
-  label,
-  required = false,
-  error,
-  children,
-}) => {
-  return (
-    <div className="mb-8">
-      <label className="block text-label text-black mb-3">
-        {label}
-        {required && <span className="text-red-600 ml-1">*</span>}
-      </label>
+      {loading && (
+        <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z" />
+        </svg>
+      )}
       {children}
-      {error && <p className="text-body-sm text-red-600 mt-2">{error}</p>}
-    </div>
+    </button>
   );
-};
+});
 
-interface FormInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
-  error?: string;
-}
+// ---------------------------------------------------------------------------
+// Layout
+// ---------------------------------------------------------------------------
 
-export const FormInput = React.forwardRef<HTMLInputElement, FormInputProps>(
-  ({ label, error, className = '', ...props }, ref) => (
-    <FormGroup label={label || ''} error={error}>
-      <input
-        ref={ref}
-        className={`
-          form-input-luxury
-          ${error ? 'border-red-600' : ''}
-          ${className}
-        `}
-        {...props}
-      />
-    </FormGroup>
-  )
-);
-
-FormInput.displayName = 'FormInput';
-
-interface FormSelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
-  label?: string;
-  error?: string;
-  options: Array<{ value: string; label: string }>;
-}
-
-export const FormSelect = React.forwardRef<HTMLSelectElement, FormSelectProps>(
-  ({ label, error, options, className = '', ...props }, ref) => (
-    <FormGroup label={label || ''} error={error}>
-      <select
-        ref={ref}
-        className={`
-          form-select-luxury
-          ${error ? 'border-red-600' : ''}
-          ${className}
-        `}
-        {...props}
-      >
-        <option value="">Select an option</option>
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-    </FormGroup>
-  )
-);
-
-FormSelect.displayName = 'FormSelect';
-
-interface FormTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
-  label?: string;
-  error?: string;
-}
-
-export const FormTextarea = React.forwardRef<HTMLTextAreaElement, FormTextareaProps>(
-  ({ label, error, className = '', ...props }, ref) => (
-    <FormGroup label={label || ''} error={error}>
-      <textarea
-        ref={ref}
-        className={`
-          form-textarea-luxury
-          min-h-[120px] resize-vertical
-          ${error ? 'border-red-600' : ''}
-          ${className}
-        `}
-        {...props}
-      />
-    </FormGroup>
-  )
-);
-
-FormTextarea.displayName = 'FormTextarea';
-
-// ============================================================================
-// 5. SKELETON LOADING COMPONENT
-// ============================================================================
-
-interface SkeletonProps {
-  className?: string;
-  width?: string | number;
-  height?: string | number;
-}
-
-export const Skeleton: React.FC<SkeletonProps> = ({
-  className = '',
-  width = '100%',
-  height = '100%',
-}) => (
-  <div
-    className={`skeleton-loading ${className}`}
-    style={{ width, height }}
-  />
-);
-
-// ============================================================================
-// 6. PRODUCT SKELETON CARD
-// ============================================================================
-
-export const ProductCardSkeleton: React.FC = () => (
-  <article className="product-card-luxury flex flex-col bg-white">
-    <Skeleton className="w-full aspect-square mb-6" />
-    <div className="px-6 pb-6">
-      <Skeleton className="h-4 w-24 mb-3" />
-      <Skeleton className="h-6 w-3/4 mb-3" />
-      <Skeleton className="h-6 w-1/2 mb-3" />
-      <Skeleton className="h-4 w-full" />
-    </div>
-  </article>
-);
-
-// ============================================================================
-// 7. PRODUCT GRID
-// ============================================================================
-
-interface ProductGridProps {
+/**
+ * A vertical rhythm block. The app's root layout already provides the page
+ * gutter and max width, so this only owns spacing between major sections.
+ */
+export function Section({
+  children,
+  className = "",
+  as: Tag = "section"
+}: {
   children: React.ReactNode;
-  columns?: 2 | 3 | 4;
+  className?: string;
+  as?: React.ElementType;
+}) {
+  return <Tag className={`py-10 sm:py-14 ${className}`}>{children}</Tag>;
 }
 
-export const ProductGrid: React.FC<ProductGridProps> = ({
+/** Responsive product grid. Columns are the desktop maximum; it steps down. */
+export function ProductGrid({
   children,
   columns = 4,
-}) => {
-  const colClasses = {
-    2: 'grid-luxury-cols-2',
-    3: 'grid-luxury-cols-3',
-    4: 'grid-luxury-cols-4',
-  };
+  className = ""
+}: {
+  children: React.ReactNode;
+  columns?: 2 | 3 | 4;
+  className?: string;
+}) {
+  const cols = {
+    2: "grid-cols-1 sm:grid-cols-2",
+    3: "grid-cols-2 sm:grid-cols-3",
+    4: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"
+  }[columns];
 
-  return (
-    <div className={`grid-luxury ${colClasses[columns]}`}>
-      {children}
-    </div>
-  );
+  return <div className={`grid gap-x-4 gap-y-10 sm:gap-x-6 ${cols} ${className}`}>{children}</div>;
+}
+
+// ---------------------------------------------------------------------------
+// Typography
+// ---------------------------------------------------------------------------
+
+const HEADING_SIZES: Record<number, string> = {
+  1: "text-4xl sm:text-5xl",
+  2: "text-3xl sm:text-4xl",
+  3: "text-2xl sm:text-3xl",
+  4: "text-xl sm:text-2xl",
+  5: "text-lg",
+  6: "text-base"
 };
 
-// ============================================================================
-// 8. SECTION CONTAINER
-// ============================================================================
-
-interface SectionProps {
+export function Heading({
+  level = 1,
+  children,
+  className = ""
+}: {
+  level?: 1 | 2 | 3 | 4 | 5 | 6;
   children: React.ReactNode;
   className?: string;
-  maxWidth?: 'container' | 'full';
-}
-
-export const Section: React.FC<SectionProps> = ({
-  children,
-  className = '',
-  maxWidth = 'container',
-}) => (
-  <section
-    className={`
-      section-luxury
-      ${maxWidth === 'container' ? 'container-luxury' : 'w-full'}
-      ${className}
-    `}
-  >
-    {children}
-  </section>
-);
-
-// ============================================================================
-// 9. BADGE / COLLECTION LABEL
-// ============================================================================
-
-interface BadgeProps {
-  children: React.ReactNode;
-  variant?: 'default' | 'accent' | 'success' | 'warning' | 'error';
-}
-
-export const Badge: React.FC<BadgeProps> = ({ children, variant = 'default' }) => {
-  const variants = {
-    default: 'bg-gray-200 text-gray-800',
-    accent: 'bg-celadon text-gray-900',
-    success: 'bg-green-600 text-white',
-    warning: 'bg-amber-600 text-white',
-    error: 'bg-red-600 text-white',
-  };
-
+}) {
+  const Tag = `h${level}` as React.ElementType;
   return (
-    <span className={`inline-block px-3 py-1 text-label rounded-none ${variants[variant]}`}>
+    <Tag className={`font-luxury font-normal tracking-tight text-soft-700 ${HEADING_SIZES[level]} ${className}`}>
+      {children}
+    </Tag>
+  );
+}
+
+/** The small uppercase eyebrow above a heading. */
+export function Kicker({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <p className={`text-[10px] font-medium uppercase tracking-[0.18em] text-soft-400 ${className}`}>{children}</p>
+  );
+}
+
+export function Badge({
+  children,
+  variant = "default"
+}: {
+  children: React.ReactNode;
+  variant?: "default" | "accent" | "muted" | "alert";
+}) {
+  const variants = {
+    default: "bg-soft-700 text-white",
+    accent: "bg-celadon text-soft-700",
+    muted: "bg-white text-soft-700 border border-soft-300",
+    alert: "bg-vienna-red text-white"
+  };
+  return (
+    <span
+      className={`inline-block px-2 py-1 text-[10px] font-medium uppercase tracking-[0.12em] ${variants[variant]}`}
+    >
       {children}
     </span>
   );
-};
-
-// ============================================================================
-// 10. PRICE DISPLAY COMPONENT
-// ============================================================================
-
-interface PriceProps {
-  amount: number; // In cents/minor units
-  currency?: 'USD' | 'EUR' | 'GBP' | 'GHS';
-  size?: 'sm' | 'md' | 'lg';
-  original?: number;
 }
 
-export const Price: React.FC<PriceProps> = ({
+/**
+ * Money. Takes minor units plus an ISO currency code and formats through Intl,
+ * matching `formatPrice` in types/product — no hardcoded currency symbols, so
+ * GHS renders correctly rather than as a dollar amount.
+ */
+export function Price({
   amount,
-  currency = 'USD',
-  size = 'md',
-  original,
-}) => {
-  const formattedPrice = (amount / 100).toFixed(2);
-  const formattedOriginal = original ? (original / 100).toFixed(2) : null;
-
-  const sizes = {
-    sm: 'text-body-sm',
-    md: 'text-body-md',
-    lg: 'text-h5',
-  };
-
-  const currencySymbols = {
-    USD: '$',
-    EUR: '€',
-    GBP: '£',
-    GHS: '₵',
-  };
+  currency,
+  compareAt,
+  className = ""
+}: {
+  amount: number;
+  currency: string;
+  compareAt?: number;
+  className?: string;
+}) {
+  const format = (minorUnits: number) =>
+    new Intl.NumberFormat("en-GH", { style: "currency", currency }).format(minorUnits / 100);
 
   return (
-    <div>
-      <div className={`${sizes[size]} font-semibold text-black`}>
-        {currencySymbols[currency]}
-        {formattedPrice}
-      </div>
-      {formattedOriginal && (
-        <p className="text-body-sm text-gray-400 line-through">
-          {currencySymbols[currency]}
-          {formattedOriginal}
+    <span className={`inline-flex items-baseline gap-2 ${className}`}>
+      <span>{format(amount)}</span>
+      {typeof compareAt === "number" && compareAt > amount && (
+        <span className="text-soft-400 line-through">{format(compareAt)}</span>
+      )}
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Forms
+// ---------------------------------------------------------------------------
+
+function FieldShell({
+  label,
+  htmlFor,
+  required,
+  error,
+  hint,
+  children
+}: {
+  label?: string;
+  htmlFor?: string;
+  required?: boolean;
+  error?: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="mb-6">
+      {label && (
+        <label htmlFor={htmlFor} className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-soft-400">
+          {label}
+          {required && (
+            <span className="ml-1 text-vienna-red" aria-hidden>
+              *
+            </span>
+          )}
+        </label>
+      )}
+      {children}
+      {hint && !error && <p className="mt-1.5 text-xs text-soft-400">{hint}</p>}
+      {error && (
+        <p role="alert" className="mt-1.5 text-xs text-vienna-red">
+          {error}
         </p>
       )}
     </div>
   );
-};
-
-// ============================================================================
-// 11. HEADING COMPONENTS (With Luxury Serif)
-// ============================================================================
-
-interface HeadingProps {
-  level?: 1 | 2 | 3 | 4 | 5 | 6;
-  children: React.ReactNode;
-  className?: string;
 }
 
-export const Heading: React.FC<HeadingProps> = ({
-  level = 1,
-  children,
-  className = '',
-}) => {
-  const sizes = {
-    1: 'text-h1',
-    2: 'text-h2',
-    3: 'text-h3',
-    4: 'text-h4',
-    5: 'text-h5',
-    6: 'text-h6',
-  };
+const FIELD_BASE =
+  "w-full rounded-none border-0 border-b bg-transparent px-1 py-3 text-sm text-soft-700 transition-colors duration-300 placeholder:text-soft-400 focus:outline-none focus:ring-0";
 
-  const Tag = `h${level}` as keyof JSX.IntrinsicElements;
+type FieldExtras = { label?: string; error?: string; hint?: string };
+
+export const FormInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement> & FieldExtras>(
+  function FormInput({ label, error, hint, className = "", id, required, ...props }, ref) {
+    const fieldId = id ?? props.name;
+    return (
+      <FieldShell label={label} htmlFor={fieldId} required={required} error={error} hint={hint}>
+        <input
+          ref={ref}
+          id={fieldId}
+          required={required}
+          aria-invalid={error ? true : undefined}
+          className={`${FIELD_BASE} ${error ? "border-vienna-red" : "border-soft-300 focus:border-soft-700"} ${className}`}
+          {...props}
+        />
+      </FieldShell>
+    );
+  }
+);
+
+export const FormTextarea = React.forwardRef<
+  HTMLTextAreaElement,
+  React.TextareaHTMLAttributes<HTMLTextAreaElement> & FieldExtras
+>(function FormTextarea({ label, error, hint, className = "", id, required, ...props }, ref) {
+  const fieldId = id ?? props.name;
+  return (
+    <FieldShell label={label} htmlFor={fieldId} required={required} error={error} hint={hint}>
+      <textarea
+        ref={ref}
+        id={fieldId}
+        required={required}
+        aria-invalid={error ? true : undefined}
+        className={`${FIELD_BASE} min-h-[7rem] resize-y ${error ? "border-vienna-red" : "border-soft-300 focus:border-soft-700"} ${className}`}
+        {...props}
+      />
+    </FieldShell>
+  );
+});
+
+export const FormSelect = React.forwardRef<
+  HTMLSelectElement,
+  React.SelectHTMLAttributes<HTMLSelectElement> & FieldExtras & { options: Array<{ value: string; label: string }> }
+>(function FormSelect({ label, error, hint, options, className = "", id, required, ...props }, ref) {
+  const fieldId = id ?? props.name;
+  return (
+    <FieldShell label={label} htmlFor={fieldId} required={required} error={error} hint={hint}>
+      <select
+        ref={ref}
+        id={fieldId}
+        required={required}
+        aria-invalid={error ? true : undefined}
+        className={`${FIELD_BASE} cursor-pointer ${error ? "border-vienna-red" : "border-soft-300 focus:border-soft-700"} ${className}`}
+        {...props}
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </FieldShell>
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Loading
+// ---------------------------------------------------------------------------
+
+export function Skeleton({ className = "" }: { className?: string }) {
+  return <div aria-hidden className={`skeleton-loading ${className}`} />;
+}
+
+/** Matches ProductCard's footprint so the grid doesn't reflow when data lands. */
+export function ProductCardSkeleton() {
+  return (
+    <div>
+      <Skeleton className="aspect-[3/4] w-full" />
+      <div className="mt-3 flex items-baseline justify-between gap-2">
+        <Skeleton className="h-3.5 w-2/3" />
+        <Skeleton className="h-3.5 w-12" />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Media gallery
+// ---------------------------------------------------------------------------
+
+/**
+ * Product media viewer. Takes the ordered `MediaSlot[]` from `productMedia()`
+ * so images and video share one index — the selected thumbnail is always the
+ * thing on the stage, whether it's a photo or a clip.
+ */
+export function ImageGallery({
+  media,
+  priority = false,
+  className = ""
+}: {
+  media: MediaSlot[];
+  priority?: boolean;
+  className?: string;
+}) {
+  const [active, setActive] = React.useState(0);
+
+  // Media can change when the viewer navigates between products without a
+  // full remount; clamp rather than pointing at a slot that no longer exists.
+  React.useEffect(() => {
+    setActive((current) => (current < media.length ? current : 0));
+  }, [media]);
+
+  if (media.length === 0) return null;
+  const current = media[active] ?? media[0];
 
   return (
-    <Tag className={`font-luxury font-medium ${sizes[level]} ${className}`}>
-      {children}
-    </Tag>
+    <div className={className}>
+      <div className="product-stage relative aspect-[3/4]">
+        {current.kind === "video" ? (
+          <video
+            key={current.src}
+            src={current.src}
+            poster={current.poster}
+            autoPlay
+            muted
+            loop
+            playsInline
+            controls={false}
+            aria-label={current.alt}
+            className="absolute inset-0 h-full w-full object-contain p-5 sm:p-12"
+          />
+        ) : (
+          <Image
+            src={current.src}
+            alt={current.alt}
+            fill
+            priority={priority}
+            sizes="(max-width: 768px) 100vw, 50vw"
+            className="object-contain p-5 transition-opacity duration-500 ease-apple sm:p-12"
+          />
+        )}
+      </div>
+
+      {media.length > 1 && (
+        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+          {media.map((slot, index) => (
+            <button
+              key={`${slot.kind}-${slot.src}`}
+              type="button"
+              onClick={() => setActive(index)}
+              aria-label={slot.alt}
+              aria-current={index === active}
+              className={`relative h-16 w-14 shrink-0 overflow-hidden border bg-white transition-colors duration-300 sm:h-20 sm:w-16 ${
+                index === active ? "border-soft-700" : "border-soft-200 hover:border-soft-400"
+              }`}
+            >
+              <Image
+                src={slot.kind === "video" ? slot.poster : slot.src}
+                alt=""
+                fill
+                sizes="64px"
+                className="object-contain p-1.5"
+              />
+              {slot.kind === "video" && (
+                <span className="absolute inset-0 flex items-center justify-center bg-black/25">
+                  <svg viewBox="0 0 24 24" className="h-5 w-5 fill-white" aria-hidden>
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
-};
-
-// ============================================================================
-// EXPORT ALL
-// ============================================================================
-
-export default {
-  Button,
-  ProductCard,
-  ImageGallery,
-  FormGroup,
-  FormInput,
-  FormSelect,
-  FormTextarea,
-  Skeleton,
-  ProductCardSkeleton,
-  ProductGrid,
-  Section,
-  Badge,
-  Price,
-  Heading,
-};
+}

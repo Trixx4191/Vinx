@@ -32,7 +32,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         data: {
           name: data.name, description: data.description, material: data.material, price: data.price,
           currency: data.currency, categoryId: category.id, frontImageUrl: data.frontImageUrl,
-          backImageUrl: data.backImageUrl, isPublished: data.isPublished,
+          backImageUrl: data.backImageUrl, hoverVideoUrl: data.hoverVideoUrl ?? null,
+          galleryImages: data.galleryImages, isPublished: data.isPublished,
           variants: { create: data.variants.map((variant) => ({ ...variant, inStock: variant.quantity > 0 })) }
         },
         include: { variants: true }

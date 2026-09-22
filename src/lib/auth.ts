@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { authenticator } from "otplib";
 import { prisma } from "@/lib/prisma";
+import { isAdminRole } from "@/lib/roles";
 
 // Generic error message on purpose: never reveal whether the email or the
 // password was wrong. That distinction is exactly what account-enumeration
@@ -52,7 +53,13 @@ export const authOptions: NextAuthOptions = {
         // type that matters most to protect. Regular customers aren't
         // required to have it (kept optional here to avoid adding friction
         // to checkout), but the same fields/flow would extend to them too.
-        if (user.role === "ADMIN" && user.twoFactorEnabled) {
+        //
+        // This MUST use isAdminRole rather than comparing to "ADMIN": a
+        // literal comparison silently stops covering SUPER_ADMIN the moment
+        // that role exists, which would let the single most privileged
+        // account in the system log in on a password alone despite having
+        // 2FA switched on.
+        if (isAdminRole(user.role) && user.twoFactorEnabled) {
           if (!user.twoFactorSecret) {
             throw new Error(INVALID_CREDENTIALS); // inconsistent state — fail closed
           }

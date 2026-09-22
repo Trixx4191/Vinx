@@ -4,6 +4,7 @@ import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/types/product";
+import { isAdminRole } from "@/lib/roles";
 
 export default async function AdminHome() {
   // Defense in depth, layer 3: even though middleware already gated this
@@ -11,7 +12,7 @@ export default async function AdminHome() {
   // this still stops the page from rendering for a non-admin.
   const session = await getServerSession(authOptions);
   const role = (session?.user as { role?: string } | undefined)?.role;
-  if (role !== "ADMIN") redirect("/");
+  if (!isAdminRole(role)) redirect("/");
 
   const [orderCount, pendingCount, productCount, lowStockCount, revenue, recentOrders, recentActivity] = await Promise.all([
     prisma.order.count(),
