@@ -5,17 +5,21 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // EXISTING: Soft palette (keep as-is for compatibility)
+        // The primary ramp, used site-wide. Every step is a true neutral:
+        // the previous values carried a green cast (#f2f2f0, #858582, #3d3d3a)
+        // which reads warm and artisanal. A modernist luxury palette has no
+        // temperature at all, so the only colour on the page is the product.
+        // The token names are unchanged, so nothing that consumes them breaks.
         soft: {
           50: "#fafafa",
-          100: "#f2f2f0",
-          200: "#e5e5e2",
-          300: "#d1d1ce",
-          400: "#858582",
-          500: "#5f5f5c",
-          600: "#3d3d3a",
-          700: "#111111",
-          800: "#080808",
+          100: "#f4f4f4",
+          200: "#e5e5e5",
+          300: "#d4d4d4",
+          400: "#a3a3a3",
+          500: "#737373",
+          600: "#404040",
+          700: "#171717",
+          800: "#0a0a0a",
           900: "#000000"
         },
         // NEW: Luxury grays (extends soft palette for luxury aesthetic)
@@ -39,23 +43,22 @@ const config: Config = {
         rose: "#E8A7A7"
       },
       fontFamily: {
+        // The single family for the whole site, fed by the next/font variable
+        // set in layout.tsx. The `luxury` and `serif` keys that used to live
+        // here pointed at Playfair Display, which is no longer loaded — leaving
+        // them would have meant `font-serif` silently rendering in whatever
+        // system serif happened to exist, which is exactly the kind of drift
+        // that makes a design system stop being one.
         sans: [
+          "var(--font-grotesque)",
           "-apple-system",
           "BlinkMacSystemFont",
-          "SF Pro Display",
-          "SF Pro Text",
           "Segoe UI",
           "Roboto",
           "Helvetica Neue",
           "Arial",
           "sans-serif"
-        ],
-        // NEW: Luxury serif for headings
-        luxury: ['"Playfair Display"', '"Garamond"', '"Georgia"', 'serif'],
-        serif: ['"Playfair Display"', '"Garamond"', 'serif']
-      },
-      letterSpacing: {
-        luxury: "0.02em"
+        ]
       },
       // NOTE: Tailwind's default `spacing` and `fontSize` scales are left
       // untouched on purpose. Redefining keys like `4` or `sm` there rewrites

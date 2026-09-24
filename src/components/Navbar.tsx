@@ -18,51 +18,51 @@ export default function Navbar() {
   if (pathname.startsWith("/admin")) return null;
 
   const linkClass = (href: string) =>
-    `relative text-sm font-medium transition-colors duration-300 ease-apple ${
+    `type-micro transition-colors duration-300 ${
       pathname === href || (href !== "/" && pathname.startsWith(href))
-        ? "text-soft-700"
-        : "text-soft-500 hover:text-soft-700"
+        ? "text-soft-800"
+        : "text-soft-500 hover:text-soft-800"
     }`;
 
   return (
-    <header className="sticky top-0 z-50 bg-[#f5f5f3]/95 px-5 pt-4 backdrop-blur-sm sm:px-8 lg:px-10">
-      <nav className="mx-auto flex max-w-[1600px] items-center justify-between border-b border-black px-1 pb-3 text-[11px] sm:px-2">
-        <BrandMark className="text-[16px] transition-opacity duration-300 hover:opacity-60" />
+    <header className="sticky top-0 z-50 bg-white/95 px-5 backdrop-blur-sm sm:px-8 lg:px-10">
+      {/* Three columns rather than a flex row, so the wordmark is centred on the
+          page itself and does not drift as the links on either side change
+          width — the account link alone swaps between three different labels. */}
+      <nav className="mx-auto grid max-w-[1600px] grid-cols-[1fr_auto_1fr] items-center gap-4 border-b border-soft-200 py-5">
+        <div className="flex items-center gap-6">
+          <Link href="/products" className={linkClass("/products")}>
+            Shop
+          </Link>
+          <span className="type-micro hidden text-soft-400 sm:inline">New collection</span>
+        </div>
 
-        <div className="flex items-center gap-1 sm:gap-5">
-          <span className="hidden text-soft-400 sm:inline">new collection</span>
-          <Link href="/products" className={`${linkClass("/products")} px-2 py-1.5`}>
-            shop
-          </Link>
-          <Link href="/cart" className={`${linkClass("/cart")} px-2 py-1.5`}>
-            <span className="inline-flex items-center gap-1.5">
-              <HandbagIcon size={15} aria-hidden="true" />
-              <span>bag</span>
-            </span>
-            {totalItems > 0 && (
-              <span className="ml-1.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-soft-700 px-1.5 text-[11px] font-medium text-white">
-                {totalItems}
-              </span>
-            )}
-          </Link>
+        <BrandMark className="justify-self-center text-[15px] transition-opacity duration-300 hover:opacity-50" />
+
+        <div className="flex items-center justify-end gap-6">
           {session ? (
-            <Link
-              href={isAdmin ? "/admin" : "/account"}
-              className="ml-1 px-2 py-1.5 text-soft-700 transition-colors duration-300 hover:text-soft-500"
-            >
+            <Link href={isAdmin ? "/admin" : "/account"} className={linkClass(isAdmin ? "/admin" : "/account")}>
               <span className="inline-flex items-center gap-1.5">
-                <AccountIcon size={15} aria-hidden="true" />
-                <span>{isAdmin ? "Admin" : "account"}</span>
+                <AccountIcon size={13} aria-hidden="true" />
+                <span className="hidden sm:inline">{isAdmin ? "Admin" : "Account"}</span>
               </span>
             </Link>
           ) : (
-            <Link href="/login" className={`${linkClass("/login")} px-2 py-1.5`}>
+            <Link href="/login" className={linkClass("/login")}>
               <span className="inline-flex items-center gap-1.5">
-                <AccountIcon size={15} aria-hidden="true" />
-                <span>account</span>
+                <AccountIcon size={13} aria-hidden="true" />
+                <span className="hidden sm:inline">Account</span>
               </span>
             </Link>
           )}
+
+          <Link href="/cart" className={linkClass("/cart")}>
+            <span className="inline-flex items-center gap-1.5">
+              <HandbagIcon size={13} aria-hidden="true" />
+              <span className="hidden sm:inline">Bag</span>
+              {totalItems > 0 && <span className="tabular-nums">({totalItems})</span>}
+            </span>
+          </Link>
         </div>
       </nav>
     </header>

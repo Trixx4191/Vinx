@@ -111,9 +111,12 @@ export function ProductGrid({
 // Typography
 // ---------------------------------------------------------------------------
 
+// An editorial scale: the top two steps are deliberately much larger than the
+// rest, because a collection title and a section label are different kinds of
+// object, not neighbouring sizes on a ramp.
 const HEADING_SIZES: Record<number, string> = {
-  1: "text-4xl sm:text-5xl",
-  2: "text-3xl sm:text-4xl",
+  1: "text-5xl sm:text-7xl",
+  2: "text-3xl sm:text-5xl",
   3: "text-2xl sm:text-3xl",
   4: "text-xl sm:text-2xl",
   5: "text-lg",
@@ -131,17 +134,15 @@ export function Heading({
 }) {
   const Tag = `h${level}` as React.ElementType;
   return (
-    <Tag className={`font-luxury font-normal tracking-tight text-soft-700 ${HEADING_SIZES[level]} ${className}`}>
+    <Tag className={`type-display text-soft-800 ${HEADING_SIZES[level]} ${className}`}>
       {children}
     </Tag>
   );
 }
 
-/** The small uppercase eyebrow above a heading. */
+/** The wide-tracked micro-caps eyebrow that sits above a heading. */
 export function Kicker({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return (
-    <p className={`text-[10px] font-medium uppercase tracking-[0.18em] text-soft-400 ${className}`}>{children}</p>
-  );
+  return <p className={`type-micro text-soft-400 ${className}`}>{children}</p>;
 }
 
 export function Badge({

@@ -3,33 +3,54 @@
 @tailwind utilities;
 
 :root {
-  --bg: #f5f5f3;
-  --fg: #111111;
-  --muted: #777774;
-  --glass: rgba(255, 255, 255, 0.84);
-  --glass-border: #dededb;
-  --accent: #111111;
+  /* Pure white, not the warm #f5f5f3 this used to be. A warm ground reads as
+     artisanal and soft; the modernist luxury houses sit on true white so the
+     product is the only colour on the page. */
+  --bg: #ffffff;
+  --fg: #0a0a0a;
+  --muted: #6b6b6b;
+  --glass: #ffffff;
+  --glass-border: #e5e5e5;
+  --accent: #0a0a0a;
+
+  /* Display tracking. Large type is pulled in, small caps pushed out — the
+     contrast between the two is doing most of the stylistic work. */
+  --track-display: -0.03em;
+  --track-micro: 0.18em;
 }
 
 html {
   scroll-behavior: smooth;
+  /* `clip`, not `hidden`, and this matters: the full-bleed rule below sizes
+     elements to 100vw, which counts the vertical scrollbar and so overflows
+     the content box by a few pixels on any platform that shows scrollbars
+     permanently. Both values contain that overflow, but `overflow: hidden` on
+     an ancestor silently kills `position: sticky` inside it — which would
+     break the site header. `clip` contains the overflow without creating a
+     scroll container, so sticky keeps working. */
+  overflow-x: clip;
 }
 
 body {
   color: var(--fg);
   background: var(--bg);
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: var(--font-grotesque), "Helvetica Neue", Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
 }
 
+/* Headings are the same grotesque as body text, differentiated by size and
+   tracking rather than by a second family. Weight stays light: at display
+   sizes a bold grotesque reads as a sale banner, not a collection. */
 h1,
 h2,
-h3 {
-  font-family: var(--font-luxury), "Garamond", "Georgia", "Times New Roman", serif;
+h3,
+h4 {
+  font-family: inherit;
   font-weight: 400;
-  letter-spacing: -0.02em;
+  letter-spacing: var(--track-display);
+  line-height: 1.02;
 }
 
 .brand-wordmark {
@@ -47,7 +68,7 @@ h3 {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background: #f5f5f3;
+  background: var(--bg);
   pointer-events: none;
 }
 
@@ -190,10 +211,32 @@ img {
    so there are no parallel CSS classes here to drift out of sync with them.
    ============================================================================ */
 
-/* Serif display face, mapped to the next/font variable set in layout.tsx with
-   a system fallback stack so headings still render if the font never loads. */
-.font-luxury {
-  font-family: var(--font-luxury), "Garamond", "Georgia", "Times New Roman", serif;
+/* The two ends of the type system. `display` is for anything set large — the
+   negative tracking is what stops a big grotesque from looking like a system
+   font. `micro` is the wide-tracked caps used for eyebrows, labels and nav. */
+.type-display {
+  font-weight: 400;
+  letter-spacing: var(--track-display);
+  line-height: 1.02;
+}
+
+.type-micro {
+  font-size: 0.625rem;
+  font-weight: 400;
+  letter-spacing: var(--track-micro);
+  text-transform: uppercase;
+  line-height: 1.4;
+}
+
+/* Full-bleed escape hatch. The app shell centres content inside a padded
+   max-width container, which is right for reading but wrong for imagery — a
+   hero that stops short of the viewport edge loses most of its authority.
+   This pulls an element back out to the full width from inside that container
+   without needing a separate layout. */
+.bleed {
+  width: 100vw;
+  margin-left: 50%;
+  transform: translateX(-50%);
 }
 
 /* Loading shimmer. The keyframes are declared here rather than relying on the

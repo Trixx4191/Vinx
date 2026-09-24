@@ -1,14 +1,23 @@
 import type { Metadata } from "next";
-import { Playfair_Display } from "next/font/google";
+import { Inter } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import Providers from "@/components/Providers";
 import "./globals.css";
 
-// Google Font: Luxury serif for headings
-const playfair = Playfair_Display({
+/**
+ * One neo-grotesque for the whole site.
+ *
+ * This replaces the Playfair Display serif used earlier. A serif reads as
+ * heritage luxury — Dior, Tiffany — while Prada's house style is the opposite:
+ * a tight modernist sans, set in near-black on white, with headlines pulled in
+ * on their tracking and labels pushed far out. The contrast between those two
+ * treatments of the same typeface is what carries the look, so a second family
+ * would only dilute it.
+ */
+const inter = Inter({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-luxury",
+  weight: ["300", "400", "500", "600"],
+  variable: "--font-grotesque",
   display: "swap"
 });
 
@@ -19,7 +28,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={playfair.variable}>
+    <html lang="en" className={inter.variable}>
       <body className="min-h-screen antialiased">
         <div className="bg-layer" aria-hidden />
         <Providers>

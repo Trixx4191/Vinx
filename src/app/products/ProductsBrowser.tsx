@@ -121,7 +121,7 @@ export default function ProductsBrowser({
 
       {visibleProducts.length === 0 ? (
         <div className="mt-10 border border-soft-300 bg-white px-8 py-24 text-center">
-          <p className="font-luxury text-2xl text-soft-700">Nothing matched this search.</p>
+          <p className="type-display text-2xl text-soft-800">Nothing matched this search.</p>
           <p className="mt-3 text-sm text-soft-400">Try another word, or return to all pieces.</p>
           <Button variant="secondary" className="mt-8" onClick={clearFilters}>
             View all pieces

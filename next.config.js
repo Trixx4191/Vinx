@@ -23,9 +23,12 @@ function imageRemotePatterns() {
     }
   }
 
-  // Seed/demo placeholders, development only.
+  // Seed and editorial placeholders, development only. These are stand-ins for
+  // imagery you have not shot yet; neither host is reachable in production, so
+  // anything still pointing at them will fail loudly rather than ship.
   if (process.env.NODE_ENV === "development") {
     patterns.push({ protocol: "https", hostname: "placehold.co" });
+    patterns.push({ protocol: "https", hostname: "images.unsplash.com" });
   }
 
   if (patterns.length === 0) {
