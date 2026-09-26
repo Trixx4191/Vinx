@@ -36,75 +36,87 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="signup-page page-enter mx-auto max-w-md py-4 sm:py-10">
-      <div className="mb-8 text-center">
-        <BrandMark href={null} className="text-base" />
-        <p className="mt-7 text-[10px] uppercase tracking-[0.2em] text-soft-400">Vinx / account</p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-soft-700">Create your account</h1>
-        <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-soft-500">
+    <div className="signup-page page-enter mx-auto max-w-sm py-16 sm:py-24">
+      <div className="text-center">
+        <BrandMark href={null} className="text-[15px]" />
+        <p className="type-micro mt-8 text-soft-400">Vinx / Account</p>
+        <h1 className="type-display mt-4 text-3xl text-soft-800">Create your account</h1>
+        <p className="mx-auto mt-4 max-w-xs text-sm leading-relaxed text-soft-500">
           Save your details and keep your Vinx pieces close.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="glass rounded-[2rem] p-6 sm:p-9">
-        <div className="space-y-5">
-        <div>
-          <label className="field-label" htmlFor="signup-name">
-            Full name
-          </label>
-          <input
-            id="signup-name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            className="input-soft"
-          />
+      <form onSubmit={handleSubmit} className="mt-12">
+        <div className="space-y-7">
+          <div>
+            <label className="type-micro mb-2 block text-soft-400" htmlFor="signup-name">
+              Full name
+            </label>
+            <input
+              id="signup-name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              autoComplete="name"
+              className="input-soft"
+            />
+          </div>
+
+          <div>
+            <label className="type-micro mb-2 block text-soft-400" htmlFor="signup-email">
+              Email
+            </label>
+            <input
+              id="signup-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+              className="input-soft"
+            />
+          </div>
+
+          <div>
+            <label className="type-micro mb-2 block text-soft-400" htmlFor="signup-password">
+              Password
+            </label>
+            <input
+              id="signup-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={10}
+              autoComplete="new-password"
+              className="input-soft"
+            />
+            <p className="mt-3 text-xs leading-relaxed text-soft-400">
+              At least 10 characters, with one letter and one number.
+            </p>
+          </div>
         </div>
-        <div>
-          <label className="field-label" htmlFor="signup-email">
-            Email
-          </label>
-          <input
-            id="signup-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoComplete="email"
-            className="input-soft"
-          />
-        </div>
-        <div>
-          <label className="field-label" htmlFor="signup-password">
-            Password
-          </label>
-          <input
-            id="signup-password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={10}
-            autoComplete="new-password"
-            className="input-soft"
-          />
-          <p className="mt-2 text-xs leading-relaxed text-soft-400">Use at least 10 characters with one letter and one number.</p>
-        </div>
-        </div>
-        {error && <p role="alert" className="rounded-2xl bg-red-50/80 p-3 text-sm text-red-700">{error}</p>}
-        <button type="submit" disabled={loading} className="btn-primary mt-7 w-full py-3.5 disabled:opacity-60">
-          {loading ? "Creating..." : "Create account"}
+
+        {error && (
+          <p role="alert" className="mt-6 border-l-2 border-vienna-red pl-3 text-sm text-vienna-red">
+            {error}
+          </p>
+        )}
+
+        <button type="submit" disabled={loading} className="btn-primary mt-10 w-full disabled:opacity-40">
+          {loading ? "Creating…" : "Create account"}
         </button>
-        <p className="mt-4 text-center text-[11px] leading-relaxed text-soft-400">
+
+        <p className="mt-5 text-center text-xs leading-relaxed text-soft-400">
           By creating an account, you agree to receive updates about your Vinx orders and account.
         </p>
       </form>
 
-      <p className="mt-7 text-center text-sm text-soft-500">
-        Already have an account?
-        <Link href="/login" className="font-medium text-soft-700 transition-opacity hover:opacity-70">
-          {" "}Log in
+      <p className="mt-10 text-center text-sm text-soft-500">
+        Already have an account?{" "}
+        <Link href="/login" className="text-soft-800 underline underline-offset-4 transition-opacity hover:opacity-50">
+          Log in
         </Link>
       </p>
     </div>

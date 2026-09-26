@@ -83,7 +83,7 @@ export default function ProductsBrowser({
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search"
-                className="w-full min-w-0 rounded-none border-0 border-b border-soft-300 bg-transparent px-1 py-2 text-xs uppercase tracking-[0.1em] text-soft-700 transition-colors duration-300 placeholder:text-soft-400 focus:border-soft-700 focus:outline-none focus:ring-0 sm:w-44"
+                className="w-full min-w-0 rounded-none border-0 border-b border-soft-300 bg-transparent px-1 py-2 type-micro text-soft-700 transition-colors duration-300 placeholder:text-soft-400 focus:border-soft-700 focus:outline-none focus:ring-0 sm:w-44"
               />
             </label>
             <label>
@@ -91,7 +91,7 @@ export default function ProductsBrowser({
               <select
                 value={sort}
                 onChange={(event) => setSort(event.target.value)}
-                className="w-full cursor-pointer rounded-none border-0 border-b border-soft-300 bg-transparent px-1 py-2 text-xs uppercase tracking-[0.1em] text-soft-700 transition-colors duration-300 focus:border-soft-700 focus:outline-none focus:ring-0 sm:w-auto"
+                className="w-full cursor-pointer rounded-none border-0 border-b border-soft-300 bg-transparent px-1 py-2 type-micro text-soft-700 transition-colors duration-300 focus:border-soft-700 focus:outline-none focus:ring-0 sm:w-auto"
               >
                 {SORT_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -105,14 +105,14 @@ export default function ProductsBrowser({
       </div>
 
       <div className="mt-6 flex items-center justify-between gap-4">
-        <p aria-live="polite" className="text-[10px] uppercase tracking-[0.16em] text-soft-400">
+        <p aria-live="polite" className="type-micro text-soft-400">
           {visibleProducts.length} {visibleProducts.length === 1 ? "piece" : "pieces"}
           {activeCategory ? ` / ${activeCategory.name}` : ""}
         </p>
         {hasFilters && (
           <button
             onClick={clearFilters}
-            className="text-[10px] uppercase tracking-[0.16em] text-soft-600 underline underline-offset-4 transition-opacity hover:opacity-60"
+            className="type-micro text-soft-600 underline underline-offset-4 transition-opacity hover:opacity-60"
           >
             Clear filters
           </button>
@@ -159,7 +159,7 @@ function CategoryTab({
     <button
       onClick={onClick}
       aria-current={active}
-      className={`whitespace-nowrap border-b pb-2 text-[10px] uppercase tracking-[0.16em] transition-colors duration-300 ${
+      className={`whitespace-nowrap border-b pb-2 type-micro transition-colors duration-300 ${
         active ? "border-soft-700 text-soft-700" : "border-transparent text-soft-400 hover:text-soft-700"
       }`}
     >

@@ -47,7 +47,7 @@ export default async function ProductsPage({
             Soft layers and considered essentials for the days that do not need a uniform.
           </p>
         </div>
-        <span className="shrink-0 text-[10px] uppercase tracking-[0.18em] text-soft-400">
+        <span className="shrink-0 type-micro text-soft-400">
           {products.length} {products.length === 1 ? "piece" : "pieces"}
         </span>
       </header>

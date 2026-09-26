@@ -55,74 +55,85 @@ function LoginForm() {
   }
 
   return (
-    <div className="page-enter mx-auto max-w-md py-4 sm:py-10">
-      <div className="mb-8 text-center">
-        <BrandMark href={null} className="text-base" />
-        <p className="text-[10px] uppercase tracking-[0.18em] text-soft-400">Vinx / account</p>
-        <h1 className="mt-7 text-3xl font-semibold tracking-[-0.04em] text-soft-700">Welcome back</h1>
-        <p className="mt-2 text-sm text-soft-500">Log in to continue to your account.</p>
+    <div className="page-enter mx-auto max-w-sm py-16 sm:py-24">
+      <div className="text-center">
+        <BrandMark href={null} className="text-[15px]" />
+        <p className="type-micro mt-8 text-soft-400">Vinx / Account</p>
+        <h1 className="type-display mt-4 text-3xl text-soft-800">Welcome back</h1>
+        <p className="mt-4 text-sm text-soft-500">Log in to continue to your account.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="glass rounded-[2rem] p-6 sm:p-9">
-        <div className="space-y-5">
-        <div>
-          <label className="field-label" htmlFor="login-email">
-            Email
-          </label>
-          <input
-            id="login-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            disabled={needsCode}
-            autoComplete="email"
-            className="input-soft disabled:opacity-60"
-          />
-        </div>
-        <div>
-          <label className="field-label" htmlFor="login-password">
-            Password
-          </label>
-          <input
-            id="login-password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            disabled={needsCode}
-            autoComplete="current-password"
-            className="input-soft disabled:opacity-60"
-          />
-        </div>
-        {needsCode && (
+      {/* No panel. A bordered card around a login form adds a second frame
+          inside a page that is already mostly empty space — the form reads
+          more clearly as bare fields on the page itself. */}
+      <form onSubmit={handleSubmit} className="mt-12">
+        <div className="space-y-7">
           <div>
-            <label className="field-label" htmlFor="login-code">
-              Authenticator code
+            <label className="type-micro mb-2 block text-soft-400" htmlFor="login-email">
+              Email
             </label>
             <input
-              id="login-code"
-              type="text"
-              inputMode="numeric"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
+              id="login-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
-              autoFocus
-              className="input-soft"
+              disabled={needsCode}
+              autoComplete="email"
+              className="input-soft disabled:opacity-40"
             />
           </div>
-        )}
+
+          <div>
+            <label className="type-micro mb-2 block text-soft-400" htmlFor="login-password">
+              Password
+            </label>
+            <input
+              id="login-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={needsCode}
+              autoComplete="current-password"
+              className="input-soft disabled:opacity-40"
+            />
+          </div>
+
+          {needsCode && (
+            <div>
+              <label className="type-micro mb-2 block text-soft-400" htmlFor="login-code">
+                Authenticator code
+              </label>
+              <input
+                id="login-code"
+                type="text"
+                inputMode="numeric"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                required
+                autoFocus
+                className="input-soft tracking-[0.3em]"
+              />
+            </div>
+          )}
         </div>
-        {error && <p role="alert" className="rounded-2xl bg-red-50/80 p-3 text-sm text-red-700">{error}</p>}
-        <button type="submit" disabled={loading} className="btn-primary mt-7 w-full py-3.5 disabled:opacity-60">
-          {loading ? "Logging in..." : needsCode ? "Verify" : "Log in"}
+
+        {error && (
+          <p role="alert" className="mt-6 border-l-2 border-vienna-red pl-3 text-sm text-vienna-red">
+            {error}
+          </p>
+        )}
+
+        <button type="submit" disabled={loading} className="btn-primary mt-10 w-full disabled:opacity-40">
+          {loading ? "Logging in…" : needsCode ? "Verify" : "Log in"}
         </button>
       </form>
 
-      <p className="mt-7 text-center text-sm text-soft-500">
-        New to Vinx?
-        <Link href="/signup" className="font-medium text-soft-700 transition-opacity hover:opacity-70">
-          {" "}Create an account
+      <p className="mt-10 text-center text-sm text-soft-500">
+        New to Vinx?{" "}
+        <Link href="/signup" className="text-soft-800 underline underline-offset-4 transition-opacity hover:opacity-50">
+          Create an account
         </Link>
       </p>
     </div>

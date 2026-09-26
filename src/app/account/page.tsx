@@ -25,7 +25,7 @@ export default async function AccountPage() {
   return (
     <div className="page-enter mx-auto max-w-5xl">
       <div className="mb-8">
-        <p className="text-[10px] uppercase tracking-[0.18em] text-soft-400">Vinx / account</p>
+        <p className="type-micro text-soft-400">Vinx / account</p>
         <h1 className="mt-3 flex items-center gap-3 text-3xl font-semibold tracking-tight text-soft-700">
           <AccountIcon size={28} aria-hidden="true" />
           <span>Your account.</span>
@@ -35,18 +35,18 @@ export default async function AccountPage() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <section className="glass rounded-3xl p-6">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-soft-400">Profile</p>
+          <p className="type-micro text-soft-400">Profile</p>
           <h2 className="mt-3 text-lg font-medium text-soft-700">{user.name ?? "Vinx customer"}</h2>
           <p className="mt-2 text-sm text-soft-500">{user.email}</p>
         </section>
         <section className="glass rounded-3xl p-6">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-soft-400">Saved address</p>
+          <p className="type-micro text-soft-400">Saved address</p>
           {address ? <div className="mt-3 text-sm leading-relaxed text-soft-600"><p className="font-medium text-soft-700">{address.fullName}</p><p>{address.line1}</p><p>{address.city}, {address.region}</p><p>{address.phone}</p></div> : <p className="mt-3 text-sm text-soft-500">Your saved address will appear after your first order.</p>}
         </section>
       </div>
 
       <section className="mt-8 glass rounded-3xl p-6 sm:p-8">
-        <div className="flex items-center justify-between gap-4"><div><p className="text-[10px] uppercase tracking-[0.16em] text-soft-400">History</p><h2 className="mt-2 text-xl font-medium text-soft-700">Your orders</h2></div><Link href="/products" className="text-xs uppercase tracking-[0.1em] text-soft-500 hover:text-soft-700">Shop pieces</Link></div>
+        <div className="flex items-center justify-between gap-4"><div><p className="type-micro text-soft-400">History</p><h2 className="mt-2 text-xl font-medium text-soft-700">Your orders</h2></div><Link href="/products" className="type-micro text-soft-500 hover:text-soft-700">Shop pieces</Link></div>
         <div className="mt-6 divide-y divide-soft-200/70">
           {user.orders.map((order) => <Link key={order.id} href={`/orders/${order.id}`} className="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"><div><p className="text-sm font-medium text-soft-700">Order #{order.id.slice(0, 8)}</p><p className="mt-1 text-xs text-soft-400">{new Date(order.createdAt).toLocaleDateString()} · {order.items.reduce((sum, item) => sum + item.quantity, 0)} pieces · {order.status}</p></div><p className="shrink-0 text-sm font-medium text-soft-700">{formatPrice(order.totalAmount, order.currency)}</p></Link>)}
           {user.orders.length === 0 && <div className="py-8 text-center text-sm text-soft-500">Your first order will appear here.</div>}
