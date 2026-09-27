@@ -1,5 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { Heading, Kicker } from "@/components/luxury";
+import {
+  parseCatalogParams,
+  catalogWhere,
+  catalogOrderBy,
+  pageCount,
+  type CatalogParams
+} from "@/lib/productQuery";
 import ProductsBrowser from "./ProductsBrowser";
 
 export const dynamic = "force-dynamic";
@@ -8,51 +15,66 @@ export const dynamic = "force-dynamic";
  * Products and categories are read straight from the database here rather than
  * fetched from `/api/products`. This page is a server component running in the
  * same process as that route, so calling it over HTTP added a round trip and a
- * second copy of the same query — the previous version actually hit that
- * endpoint twice, once for products and once for the categories it also
- * returns. The API route stays as-is for real clients.
+ * second copy of the same query. The API route stays as-is for real clients.
+ *
+ * Filtering, sorting and paging all happen in the query. The previous version
+ * loaded every published product and filtered in the browser, which meant a
+ * visitor downloaded the whole catalog to look at one category.
  */
-async function getCatalog() {
-  const [products, categories] = await Promise.all([
-    prisma.product.findMany({
-      where: { isPublished: true },
-      include: {
-        category: { select: { name: true, slug: true } },
-        variants: { select: { id: true, size: true, color: true, quantity: true, inStock: true } }
-      },
-      orderBy: { createdAt: "desc" }
-    }),
-    prisma.category.findMany({ select: { name: true, slug: true }, orderBy: { name: "asc" } })
-  ]);
-
-  return { products, categories };
-}
-
 export default async function ProductsPage({
   searchParams
 }: {
-  searchParams: Promise<{ category?: string }>;
+  searchParams: Promise<CatalogParams>;
 }) {
-  const [{ products, categories }, { category }] = await Promise.all([getCatalog(), searchParams]);
+  const params = await searchParams;
+  const query = parseCatalogParams(params);
+
+  const where = catalogWhere(query);
+
+  const [products, total, categories] = await Promise.all([
+    prisma.product.findMany({
+      where,
+      include: {
+        category: { select: { name: true, slug: true } },
+        variants: { select: { id: true, size: true, color: true, colorHex: true, quantity: true, inStock: true } }
+      },
+      orderBy: catalogOrderBy(query.sort),
+      skip: query.skip,
+      take: query.take
+    }),
+    // Counted with the same filter so the pager reflects the current view
+    // rather than the size of the catalog.
+    prisma.product.count({ where }),
+    prisma.category.findMany({ select: { name: true, slug: true }, orderBy: { name: "asc" } })
+  ]);
+
+  const totalPages = pageCount(total);
+  const activeCategory = categories.find((item) => item.slug === query.category);
 
   return (
     <div className="page-enter">
-      <header className="mb-10 flex flex-col justify-between gap-5 border-b border-soft-300/60 pb-8 sm:flex-row sm:items-end">
+      <header className="flex flex-col justify-between gap-5 border-b border-soft-200 pb-6 sm:flex-row sm:items-end">
         <div>
           <Kicker>Vinx / Collection 01</Kicker>
-          <Heading level={1} className="mt-3">
-            The essentials.
+          <Heading level={2} className="mt-3">
+            {activeCategory ? activeCategory.name : "The essentials."}
           </Heading>
           <p className="mt-4 max-w-md text-sm leading-relaxed text-soft-500">
             Soft layers and considered essentials for the days that do not need a uniform.
           </p>
         </div>
-        <span className="shrink-0 type-micro text-soft-400">
-          {products.length} {products.length === 1 ? "piece" : "pieces"}
+        <span className="shrink-0 text-xs text-soft-400">
+          {total} {total === 1 ? "piece" : "pieces"}
         </span>
       </header>
 
-      <ProductsBrowser products={products} categories={categories} initialCategory={category ?? "all"} />
+      <ProductsBrowser
+        products={products}
+        categories={categories}
+        query={query}
+        total={total}
+        totalPages={totalPages}
+      />
     </div>
   );
 }

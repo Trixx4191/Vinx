@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     include: {
       category: { select: { name: true, slug: true } },
       variants: {
-        select: { id: true, size: true, color: true, quantity: true, inStock: true }
+        select: { id: true, size: true, color: true, colorHex: true, quantity: true, inStock: true }
       }
     },
     orderBy: { createdAt: "desc" }

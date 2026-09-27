@@ -9,7 +9,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     include: {
       category: { select: { name: true, slug: true } },
       variants: {
-        select: { id: true, size: true, color: true, quantity: true, inStock: true, sku: true }
+        select: { id: true, size: true, color: true, colorHex: true, quantity: true, inStock: true, sku: true }
       }
     }
   });
@@ -22,7 +22,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     orderBy: { createdAt: "desc" },
     include: {
       category: { select: { name: true, slug: true } },
-      variants: { select: { id: true, size: true, color: true, quantity: true, inStock: true, sku: true } }
+      variants: { select: { id: true, size: true, color: true, colorHex: true, quantity: true, inStock: true, sku: true } }
     }
   });
 

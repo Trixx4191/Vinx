@@ -27,8 +27,8 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
   return (
     <div className="grid gap-8 md:grid-cols-2">
       <div>
-        <p className="text-[10px] uppercase tracking-[0.18em] text-soft-400">Fulfillment / order</p>
-        <h1 className="mb-2 mt-2 text-3xl font-semibold tracking-tight text-soft-700">#{order.id.slice(0, 8)}</h1>
+        <p className="type-micro text-soft-400">Fulfillment / order</p>
+        <h1 className="mb-2 mt-2 type-display text-3xl text-soft-800">#{order.id.slice(0, 8)}</h1>
         <p className="mb-6 text-sm text-soft-500">
           {order.user.name ?? "Customer"} — {order.user.email}
         </p>

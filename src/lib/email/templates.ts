@@ -1,0 +1,141 @@
+import { formatPrice } from "@/types/product";
+
+/**
+ * Email bodies, as pure functions.
+ *
+ * Kept free of any I/O so they can be tested directly — an email template is
+ * exactly the kind of code that is never looked at again until a customer
+ * forwards you a broken one.
+ */
+
+export type EmailMessage = { subject: string; html: string; text: string };
+
+export type OrderEmailData = {
+  orderId: string;
+  customerName: string | null;
+  items: Array<{ name: string; size: string; color: string; quantity: number; price: number }>;
+  totalAmount: number;
+  currency: string;
+  address: { fullName: string; line1: string; city: string; region: string };
+  siteUrl: string;
+};
+
+/**
+ * Escape text before it goes into HTML.
+ *
+ * Product names, colours and addresses are all free text someone typed into an
+ * admin form or a checkout field. Interpolated raw, a name containing `<` would
+ * at best break the layout of every receipt and at worst carry markup into a
+ * customer's inbox. Mail clients strip most script, which makes this easy to
+ * get wrong and never notice.
+ */
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+const shell = (bodyHtml: string) => `<!doctype html>
+<html><body style="margin:0;padding:32px;background:#faf9f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#121010;">
+<div style="max-width:520px;margin:0 auto;background:#ffffff;padding:32px;">
+<p style="margin:0 0 28px;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#79736c;">Vinx</p>
+${bodyHtml}
+</div>
+</body></html>`;
+
+function itemLines(items: OrderEmailData["items"], currency: string) {
+  return items
+    .map((item) => {
+      const label = `${item.name} — ${item.size}, ${item.color} × ${item.quantity}`;
+      const amount = formatPrice(item.price * item.quantity, currency);
+      return { label, amount };
+    });
+}
+
+export function orderConfirmationEmail(data: OrderEmailData): EmailMessage {
+  const lines = itemLines(data.items, data.currency);
+  const total = formatPrice(data.totalAmount, data.currency);
+  const reference = data.orderId.slice(0, 8);
+  const greeting = data.customerName ? `Hello ${data.customerName},` : "Hello,";
+
+  const rowsHtml = lines
+    .map(
+      (line) =>
+        `<tr><td style="padding:8px 0;font-size:14px;color:#4a453f;">${escapeHtml(line.label)}</td>` +
+        `<td align="right" style="padding:8px 0;font-size:14px;white-space:nowrap;">${escapeHtml(line.amount)}</td></tr>`
+    )
+    .join("");
+
+  const html = shell(`
+<h1 style="margin:0 0 16px;font-size:22px;font-weight:400;">Order confirmed</h1>
+<p style="margin:0 0 8px;font-size:14px;color:#4a453f;">${escapeHtml(greeting)}</p>
+<p style="margin:0 0 24px;font-size:14px;color:#4a453f;">We have your payment and your order is being prepared.</p>
+<p style="margin:0 0 24px;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#79736c;">Reference ${escapeHtml(reference)}</p>
+<table style="width:100%;border-collapse:collapse;border-top:1px solid #e7e3df;">${rowsHtml}</table>
+<table style="width:100%;border-collapse:collapse;border-top:1px solid #e7e3df;margin-top:8px;">
+<tr><td style="padding:12px 0;font-size:14px;">Total</td><td align="right" style="padding:12px 0;font-size:14px;">${escapeHtml(total)}</td></tr>
+</table>
+<p style="margin:24px 0 8px;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#79736c;">Shipping to</p>
+<p style="margin:0 0 28px;font-size:14px;line-height:1.6;color:#4a453f;">
+${escapeHtml(data.address.fullName)}<br>${escapeHtml(data.address.line1)}<br>${escapeHtml(data.address.city)}, ${escapeHtml(data.address.region)}
+</p>
+<a href="${escapeHtml(data.siteUrl)}/orders/${escapeHtml(data.orderId)}" style="display:inline-block;background:#121010;color:#ffffff;padding:12px 24px;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;">View your order</a>
+`);
+
+  const text = [
+    "Order confirmed",
+    "",
+    greeting,
+    "We have your payment and your order is being prepared.",
+    "",
+    `Reference ${reference}`,
+    "",
+    ...lines.map((line) => `${line.label}  ${line.amount}`),
+    "",
+    `Total  ${total}`,
+    "",
+    "Shipping to:",
+    data.address.fullName,
+    data.address.line1,
+    `${data.address.city}, ${data.address.region}`,
+    "",
+    `${data.siteUrl}/orders/${data.orderId}`
+  ].join("\n");
+
+  return { subject: `Your Vinx order is confirmed (${reference})`, html, text };
+}
+
+export function orderShippedEmail(
+  data: OrderEmailData & { carrier?: string | null; trackingNumber?: string | null; trackingUrl?: string | null }
+): EmailMessage {
+  const reference = data.orderId.slice(0, 8);
+  const greeting = data.customerName ? `Hello ${data.customerName},` : "Hello,";
+
+  const trackingHtml = data.trackingNumber
+    ? `<p style="margin:0 0 8px;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#79736c;">Tracking</p>
+<p style="margin:0 0 28px;font-size:14px;color:#4a453f;">${escapeHtml(data.carrier ?? "")} ${escapeHtml(data.trackingNumber)}</p>`
+    : "";
+
+  const html = shell(`
+<h1 style="margin:0 0 16px;font-size:22px;font-weight:400;">Your order is on its way</h1>
+<p style="margin:0 0 8px;font-size:14px;color:#4a453f;">${escapeHtml(greeting)}</p>
+<p style="margin:0 0 24px;font-size:14px;color:#4a453f;">Order ${escapeHtml(reference)} has shipped.</p>
+${trackingHtml}
+<a href="${escapeHtml(data.trackingUrl || `${data.siteUrl}/orders/${data.orderId}`)}" style="display:inline-block;background:#121010;color:#ffffff;padding:12px 24px;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;">Track your order</a>
+`);
+
+  const text = [
+    "Your order is on its way",
+    "",
+    greeting,
+    `Order ${reference} has shipped.`,
+    ...(data.trackingNumber ? ["", `Tracking: ${data.carrier ?? ""} ${data.trackingNumber}`.trim()] : []),
+    "",
+    data.trackingUrl || `${data.siteUrl}/orders/${data.orderId}`
+  ].join("\n");
+
+  return { subject: `Your Vinx order has shipped (${reference})`, html, text };
+}

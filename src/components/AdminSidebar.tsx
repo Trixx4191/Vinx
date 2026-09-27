@@ -25,11 +25,11 @@ export default function AdminSidebar() {
   const visibleNavigation = navigation.filter((item) => !item.superOnly || isSuperAdmin);
 
   return (
-    <aside className="border-b border-soft-300/60 pb-5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-8">
+    <aside className="border-b border-soft-200 pb-5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-8">
       <div className="flex items-center justify-between gap-4 lg:block">
         <div>
           <p className="admin-kicker">Vinx / studio</p>
-          <p className="mt-2 text-2xl font-semibold tracking-tight text-soft-700">Admin</p>
+          <p className="type-display mt-2 text-2xl text-soft-800">Admin</p>
         </div>
         <Link
           href="/"
@@ -47,10 +47,14 @@ export default function AdminSidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`relative block whitespace-nowrap rounded-xl px-3 py-2.5 text-sm transition-colors ${
+              // Active state is a rule in the margin rather than a filled
+              // block. A solid dark pill per item turns the sidebar into the
+              // heaviest thing on the page, which is the wrong emphasis for
+              // navigation that sits beside the actual work.
+              className={`relative block whitespace-nowrap border-l-2 py-2 pl-3 text-sm transition-colors ${
                 active
-                  ? "bg-soft-700 text-white shadow-soft"
-                  : "text-soft-500 hover:bg-white/60 hover:text-soft-700"
+                  ? "border-soft-800 text-soft-800"
+                  : "border-transparent text-soft-500 hover:border-soft-300 hover:text-soft-800"
               }`}
             >
               {item.label}

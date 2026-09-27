@@ -27,7 +27,7 @@ export default async function StaffPage() {
     <div className="max-w-4xl">
       <div className="mb-8">
         <p className="admin-kicker">Vinx / studio</p>
-        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-soft-700">Staff</h1>
+        <h1 className="mt-4 type-display text-3xl text-soft-800">Staff</h1>
         <p className="mt-2 max-w-xl text-sm text-soft-500">
           Master admins can grant and revoke admin access. Revoking sets an account back to customer —
           it keeps their order history and their entry in the audit log.

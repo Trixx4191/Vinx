@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin, logAdminAction } from "@/lib/requireAdmin";
 import { adminOrderUpdateSchema } from "@/lib/validation";
 import { withSafeErrors } from "@/lib/safeErrors";
+import { sendOrderShipped } from "@/lib/email/notifications";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin();
@@ -70,6 +71,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       carrier,
       trackingNumber
     });
+
+    // Notify only on the transition INTO shipped, not on every save of an
+    // order that is already shipped — otherwise correcting a typo in a
+    // tracking number sends the customer a second "on its way" email.
+    // Deliberately not awaited for its result: the status change is done and
+    // saved, and a mail failure must not turn a successful update into a 500.
+    if (status === "SHIPPED" && existing.status !== "SHIPPED") {
+      await sendOrderShipped(order.id);
+    }
 
     return NextResponse.json({ order });
   });

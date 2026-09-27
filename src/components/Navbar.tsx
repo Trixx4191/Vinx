@@ -17,50 +17,64 @@ export default function Navbar() {
 
   if (pathname.startsWith("/admin")) return null;
 
+  // Sentence case at normal tracking, not wide-tracked micro-caps. The caps
+  // read as couture formality; this register is a shop you buy sweatpants from.
   const linkClass = (href: string) =>
-    `type-micro transition-colors duration-300 ${
+    `text-sm transition-colors duration-200 ${
       pathname === href || (href !== "/" && pathname.startsWith(href))
         ? "text-soft-800"
-        : "text-soft-500 hover:text-soft-800"
+        : "text-soft-600 hover:text-soft-800"
     }`;
 
   return (
-    <header className="sticky top-0 z-50 bg-white/95 px-5 backdrop-blur-sm sm:px-8 lg:px-10">
-      {/* Three columns rather than a flex row, so the wordmark is centred on the
-          page itself and does not drift as the links on either side change
-          width — the account link alone swaps between three different labels. */}
-      <nav className="mx-auto grid max-w-[1600px] grid-cols-[1fr_auto_1fr] items-center gap-4 border-b border-soft-200 py-5">
-        <div className="flex items-center gap-6">
+    <header className="sticky top-0 z-50 bg-soft-50/95 backdrop-blur-sm">
+      {/* Announcement bar. Centred, with the region on the right — the first
+          thing this reference puts on the page, and the thing that tells a
+          shopper in Accra that the site will actually ship to them. */}
+      <div className="relative flex items-center justify-center border-b border-soft-200 px-5 py-2 sm:px-8">
+        <p className="text-xs text-soft-600">International shipping available</p>
+        <span className="absolute right-5 hidden text-xs text-soft-500 sm:block sm:right-8">GHS</span>
+      </div>
+
+      <nav className="mx-auto flex max-w-[1600px] items-center gap-6 px-5 py-4 sm:px-8 lg:px-10">
+        <BrandMark className="shrink-0 text-[17px] transition-opacity duration-200 hover:opacity-60" />
+
+        <div className="hidden items-center gap-6 sm:flex">
           <Link href="/products" className={linkClass("/products")}>
             Shop
           </Link>
-          <span className="type-micro hidden text-soft-400 sm:inline">New collection</span>
+          <Link href="/products?category=hoodies" className="text-sm text-soft-600 transition-colors hover:text-soft-800">
+            Hoodies
+          </Link>
+          <Link href="/products?category=t-shirts" className="text-sm text-soft-600 transition-colors hover:text-soft-800">
+            Tees
+          </Link>
+          <Link href="/products?category=accessories" className="text-sm text-soft-600 transition-colors hover:text-soft-800">
+            Accessories
+          </Link>
         </div>
 
-        <BrandMark className="justify-self-center text-[15px] transition-opacity duration-300 hover:opacity-50" />
-
-        <div className="flex items-center justify-end gap-6">
+        <div className="ml-auto flex items-center gap-5">
           {session ? (
             <Link href={isAdmin ? "/admin" : "/account"} className={linkClass(isAdmin ? "/admin" : "/account")}>
               <span className="inline-flex items-center gap-1.5">
-                <AccountIcon size={13} aria-hidden="true" />
+                <AccountIcon size={16} aria-hidden="true" />
                 <span className="hidden sm:inline">{isAdmin ? "Admin" : "Account"}</span>
               </span>
             </Link>
           ) : (
             <Link href="/login" className={linkClass("/login")}>
               <span className="inline-flex items-center gap-1.5">
-                <AccountIcon size={13} aria-hidden="true" />
+                <AccountIcon size={16} aria-hidden="true" />
                 <span className="hidden sm:inline">Account</span>
               </span>
             </Link>
           )}
 
-          <Link href="/cart" className={linkClass("/cart")}>
+          <Link href="/cart" className={linkClass("/cart")} aria-label={`Bag, ${totalItems} items`}>
             <span className="inline-flex items-center gap-1.5">
-              <HandbagIcon size={13} aria-hidden="true" />
-              <span className="hidden sm:inline">Bag</span>
-              {totalItems > 0 && <span className="tabular-nums">({totalItems})</span>}
+              <HandbagIcon size={16} aria-hidden="true" />
+              {totalItems > 0 && <span className="text-sm tabular-nums">{totalItems}</span>}
             </span>
           </Link>
         </div>

@@ -2,6 +2,8 @@ export type ProductVariant = {
   id: string;
   size: string;
   color: string;
+  /** Exact swatch colour as #rrggbb. Absent falls back to matching `color`. */
+  colorHex?: string | null;
   quantity: number;
   inStock: boolean;
   sku?: string;
@@ -23,7 +25,34 @@ export type Product = {
   galleryImages?: string[];
   category: { name: string; slug: string };
   variants: ProductVariant[];
+  /** Present on records read from the database; drives the "New" badge. */
+  createdAt?: Date | string;
 };
+
+/** How long a piece carries a "New" badge on the grid. */
+const NEW_FOR_DAYS = 30;
+
+/**
+ * Whether a product should be badged as new.
+ *
+ * Derived from `createdAt` rather than stored as a flag, so nothing has to
+ * remember to switch it off — a badge that has to be manually cleared is a
+ * badge that ends up on eighteen-month-old stock.
+ */
+export function isNewArrival(product: Product, now: Date = new Date()): boolean {
+  if (!product.createdAt) return false;
+  const created = new Date(product.createdAt);
+  if (Number.isNaN(created.getTime())) return false;
+
+  const ageInDays = (now.getTime() - created.getTime()) / 86_400_000;
+
+  // No lower bound on purpose. A row dated slightly ahead of the web server —
+  // ordinary clock skew between two machines — produces a negative age, and
+  // rejecting that would drop the badge from the newest product in the
+  // catalog. Erring the other way shows a badge a few seconds early, which
+  // nobody notices.
+  return ageInDays <= NEW_FOR_DAYS;
+}
 
 export function formatPrice(minorUnits: number, currency: string): string {
   return new Intl.NumberFormat("en-GH", { style: "currency", currency }).format(minorUnits / 100);

@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Product, formatPrice, isProductInStock } from "@/types/product";
+import { Product, formatPrice, isProductInStock, isNewArrival } from "@/types/product";
+import { colourwaysOf } from "@/lib/swatch";
+import { useWishlist } from "@/lib/useWishlist";
 
 /**
  * A product tile.
@@ -20,10 +22,12 @@ import { Product, formatPrice, isProductInStock } from "@/types/product";
  */
 export default function ProductCard({
   product,
-  priority = false
+  priority = false,
+  mockupSrc
 }: {
   product: Product;
   priority?: boolean;
+  mockupSrc?: string;
 }) {
   const [hovered, setHovered] = useState(false);
   // Sticky: flips true on first hover and stays true, so leaving and coming
@@ -32,8 +36,12 @@ export default function ProductCard({
   const [videoReady, setVideoReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  const { saved, toggle } = useWishlist(product.id);
+
   const inStock = isProductInStock(product);
-  const video = product.hoverVideoUrl;
+  const isNew = isNewArrival(product);
+  const colourways = colourwaysOf(product.variants);
+  const video = mockupSrc ? null : product.hoverVideoUrl;
 
   // Playback is driven here rather than in the hover handler because on the
   // very first hover the <video> has not been mounted yet, so the ref is still
@@ -43,9 +51,6 @@ export default function ProductCard({
     if (!element) return;
 
     if (hovered) {
-      // play() rejects if the browser blocks it or the pointer left before the
-      // clip was ready. Neither is worth surfacing — the still image stays on
-      // screen, which is a perfectly good outcome.
       void element.play().catch(() => undefined);
     } else {
       element.pause();
@@ -64,76 +69,130 @@ export default function ProductCard({
 
   const sizes = "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw";
 
+  // Photography fills the frame; a line-art mockup has to sit inside it with
+  // room to breathe, or it crops into an unreadable detail.
+  const fit = mockupSrc ? "object-contain p-6 sm:p-10" : "object-cover";
+
   return (
-    <Link
-      href={`/products/${product.slug}`}
-      className="group block focus:outline-none"
-      onMouseEnter={handleEnter}
-      onMouseLeave={handleLeave}
-      onFocus={handleEnter}
-      onBlur={handleLeave}
-    >
-      <div className="product-stage aspect-[3/4] transition-colors duration-500 group-hover:border-soft-500 group-focus-visible:border-soft-700">
-        <Image
-          src={product.frontImageUrl}
-          alt={product.name}
-          fill
-          priority={priority}
-          sizes={sizes}
-          className="object-contain p-4 sm:p-7"
-        />
+    <article className="group flex flex-col">
+      <div
+        className="relative"
+        onMouseEnter={handleEnter}
+        onMouseLeave={handleLeave}
+      >
+        <Link
+          href={`/products/${product.slug}`}
+          className="block focus:outline-none focus-visible:ring-1 focus-visible:ring-soft-700"
+          onFocus={handleEnter}
+          onBlur={handleLeave}
+        >
+          <div className="product-stage aspect-[3/4]">
+            <Image
+              src={mockupSrc ?? product.frontImageUrl}
+              alt={product.name}
+              fill
+              priority={priority}
+              sizes={sizes}
+              className={fit}
+            />
 
-        {/* Back image — the hover layer when there is no video, and the thing
-            that stays visible while a video is still buffering. */}
-        <Image
-          src={product.backImageUrl}
-          alt=""
-          aria-hidden
-          fill
-          sizes={sizes}
-          className="media-layer object-contain p-4 sm:p-7"
-          data-active={hovered && !(video && videoReady)}
-        />
+            {/* Back image — the hover layer when there is no video, and the
+                thing that stays visible while a video is still buffering.
+                Skipped in mockup mode, where both layers would be the same
+                file: one extra request to cross-fade an image into itself. */}
+            {!mockupSrc && (
+              <Image
+                src={product.backImageUrl}
+                alt=""
+                aria-hidden
+                fill
+                sizes={sizes}
+                className={`media-layer ${fit}`}
+                data-active={hovered && !(video && videoReady)}
+              />
+            )}
 
-        {video && videoMounted && (
-          <video
-            ref={videoRef}
-            src={video}
-            poster={product.frontImageUrl}
-            muted
-            loop
-            playsInline
-            preload="none"
-            aria-hidden
-            tabIndex={-1}
-            onCanPlay={() => setVideoReady(true)}
-            className="media-layer h-full w-full object-contain p-4 sm:p-7"
-            data-active={hovered && videoReady}
-          />
-        )}
+            {video && videoMounted && (
+              <video
+                ref={videoRef}
+                src={video}
+                poster={product.frontImageUrl}
+                muted
+                loop
+                playsInline
+                preload="none"
+                aria-hidden
+                tabIndex={-1}
+                onCanPlay={() => setVideoReady(true)}
+                className={`media-layer h-full w-full ${fit}`}
+                data-active={hovered && videoReady}
+              />
+            )}
 
-        {!inStock && (
-          <span className="absolute left-3 top-3 z-10 bg-white px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-soft-700">
-            Out of stock
-          </span>
-        )}
+            {!inStock && (
+              <span className="type-micro absolute left-3 top-3 z-10 bg-white/90 px-2 py-1 text-soft-700">
+                Sold out
+              </span>
+            )}
+          </div>
+        </Link>
 
-        {video && (
-          <span
-            className="absolute bottom-3 right-3 z-10 text-[9px] uppercase tracking-[0.16em] text-soft-400 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+        {/* Sibling of the link, not a child of it: a <button> inside an <a> is
+            invalid markup, and browsers that tolerate it still make the pair
+            impossible to reach separately by keyboard. */}
+        <button
+          type="button"
+          onClick={toggle}
+          aria-pressed={saved}
+          aria-label={saved ? `Remove ${product.name} from saved items` : `Save ${product.name}`}
+          className="absolute bottom-3 right-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/85 text-soft-700 backdrop-blur-sm transition-colors hover:bg-white focus:outline-none focus-visible:ring-1 focus-visible:ring-soft-700"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className="h-4 w-4"
+            fill={saved ? "currentColor" : "none"}
+            stroke="currentColor"
+            strokeWidth={1.5}
             aria-hidden
           >
-            Motion
-          </span>
-        )}
+            <path d="M12 20.5 4.2 12.9a4.8 4.8 0 0 1 0-6.8 4.8 4.8 0 0 1 6.8 0l1 1 1-1a4.8 4.8 0 0 1 6.8 0 4.8 4.8 0 0 1 0 6.8Z" />
+          </svg>
+        </button>
       </div>
 
-      <div className="mt-3 flex items-baseline justify-between gap-2 px-0.5">
-        <span className="truncate text-sm font-medium text-soft-700 transition-colors duration-300 group-hover:text-soft-900">
-          {product.name}
-        </span>
-        <span className="shrink-0 text-sm text-soft-500">{formatPrice(product.price, product.currency)}</span>
+      <div className="mt-3 flex flex-col gap-2">
+        {colourways.length > 0 && (
+          <ul className="flex flex-wrap items-center gap-1.5" aria-label="Available colours">
+            {colourways.map((colourway) => (
+              <li
+                key={colourway.name}
+                title={colourway.name}
+                aria-label={colourway.name}
+                style={{ backgroundColor: colourway.colour }}
+                className={`h-3.5 w-3.5 rounded-full ${
+                  colourway.needsBorder ? "ring-1 ring-inset ring-soft-300" : ""
+                }`}
+              />
+            ))}
+          </ul>
+        )}
+
+        {isNew && (
+          <span className="type-micro w-fit bg-soft-200 px-1.5 py-0.5 text-soft-600">New</span>
+        )}
+
+        <div>
+          {product.material && (
+            <p className="type-micro text-soft-400">{product.material}</p>
+          )}
+          <h3 className="mt-1 text-sm text-soft-800 transition-opacity group-hover:opacity-70">
+            {product.name}
+          </h3>
+          <p className="mt-1 text-sm tabular-nums text-soft-600">
+            {formatPrice(product.price, product.currency)}
+          </p>
+        </div>
       </div>
-    </Link>
+    </article>
   );
 }

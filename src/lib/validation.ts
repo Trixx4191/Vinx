@@ -17,9 +17,31 @@ export const signupSchema = z.object({
 
 export type SignupInput = z.infer<typeof signupSchema>;
 
+// A swatch colour, stored as #rrggbb.
+//
+// The format is enforced rather than accepting any CSS colour string: this
+// value is interpolated straight into a style attribute on the storefront, and
+// a strict pattern means nothing else can ride along in it. Shorthand (#fff)
+// is normalised to the long form so every stored value has one shape. An
+// untouched field arrives as "" and is stored as "not set", which falls back
+// to matching the colour name.
+const hexColour = z
+  .string()
+  .trim()
+  .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "Use a hex colour such as #1a1a1a")
+  .transform((value) => {
+    const body = value.slice(1).toLowerCase();
+    const full = body.length === 3 ? body.split("").map((c) => c + c).join("") : body;
+    return `#${full}`;
+  });
+
 export const productVariantSchema = z.object({
   size: z.string().trim().min(1).max(20),
   color: z.string().trim().min(1).max(40),
+  colorHex: hexColour
+    .optional()
+    .or(z.literal(""))
+    .transform((value) => (value ? value : undefined)),
   sku: z.string().trim().min(1).max(60),
   quantity: z.number().int().min(0)
 });
@@ -63,6 +85,27 @@ export const createProductSchema = z.object({
   galleryImages: z.array(mediaUrl).max(8).default([]),
   variants: z.array(productVariantSchema).min(1),
   isPublished: z.boolean().default(true)
+});
+
+// Account self-service.
+//
+// The current password is required, and checked server-side, so possession of
+// a live session is not on its own enough to change the credential that
+// session was created with. Without it, a borrowed laptop or a stolen cookie
+// becomes permanent account takeover.
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Enter your current password"),
+  newPassword: passwordSchema
+});
+
+export const updateAddressSchema = z.object({
+  fullName: z.string().trim().min(1).max(150),
+  phone: z.string().trim().min(6).max(20),
+  line1: z.string().trim().min(1).max(200),
+  line2: z.string().trim().max(200).optional().or(z.literal("")),
+  city: z.string().trim().min(1).max(100),
+  region: z.string().trim().min(1).max(100),
+  country: z.string().trim().length(2).default("GH")
 });
 
 // Staff management. Only a SUPER_ADMIN can submit either of these.

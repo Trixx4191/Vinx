@@ -4,22 +4,29 @@ import ProductCard from "@/components/ProductCard";
 import { prisma } from "@/lib/prisma";
 import { Product } from "@/types/product";
 import { Heading, Kicker, ProductGrid } from "@/components/luxury";
+import { firstExistingImage } from "@/lib/publicAsset";
 
-/**
- * Editorial placeholders, development only — `next.config.js` does not allow
- * this host in production, so any of these still in place at deploy time will
- * fail visibly instead of quietly shipping someone else's photography.
- * Replace with your own campaign imagery.
- */
-const PLACEHOLDER = {
-  hero: "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=2400&q=90",
-  editorial: "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?auto=format&fit=crop&w=1600&q=90",
+// Extensions here are honest: every one of these files is a JPEG. The previous
+// set was named .webp while actually containing JPEG data, which works — the
+// browser sniffs the bytes — but makes the next person mistrust everything they
+// read in this file.
+const HOME_IMAGES = {
+  hero: "/images/home/hero.jpg",
+  editorial: "/images/home/editorial.jpg",
   categories: [
-    "https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?auto=format&fit=crop&w=1200&q=85",
-    "https://images.unsplash.com/photo-1543076447-215ad9ba6923?auto=format&fit=crop&w=1200&q=85",
-    "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1200&q=85",
-    "https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?auto=format&fit=crop&w=1200&q=85"
+    "/images/home/categories/category-01.jpg",
+    "/images/home/categories/category-02.jpg",
+    "/images/home/categories/category-03.jpg",
+    "/images/home/categories/category-04.jpg"
   ]
+};
+
+const PRODUCT_MOCKUPS: Record<string, string> = {
+  "t-shirts": "/images/product-mockups/t-shirt.svg",
+  hoodies: "/images/product-mockups/hoodie.jpg",
+  jackets: "/images/product-mockups/jacket.svg",
+  pants: "/images/product-mockups/trousers.svg",
+  accessories: "/images/product-mockups/cap.svg"
 };
 
 async function getFeaturedProducts(): Promise<Product[]> {
@@ -30,7 +37,7 @@ async function getFeaturedProducts(): Promise<Product[]> {
       orderBy: { createdAt: "desc" },
       include: {
         category: { select: { name: true, slug: true } },
-        variants: { select: { id: true, size: true, color: true, quantity: true, inStock: true, sku: true } }
+        variants: { select: { id: true, size: true, color: true, colorHex: true, quantity: true, inStock: true, sku: true } }
       }
     });
   } catch {
@@ -55,6 +62,9 @@ async function getCategories(): Promise<{ name: string; slug: string }[]> {
 export default async function HomePage() {
   const [products, categories] = await Promise.all([getFeaturedProducts(), getCategories()]);
 
+  const heroImage = firstExistingImage(HOME_IMAGES.hero);
+  const editorialImage = firstExistingImage(HOME_IMAGES.editorial);
+
   return (
     <div className="flex flex-col">
       {/* ---------------------------------------------------------------- */}
@@ -63,27 +73,26 @@ export default async function HomePage() {
       {/* -mt-6 cancels the `pt-6` the app shell puts on <main>. That padding is
           right for every other page, but a hero has to sit flush against the
           header — a strip of white above a full-bleed image reads as a mistake. */}
-      <section className="bleed relative -mt-6 h-[88vh] min-h-[560px] overflow-hidden bg-soft-100">
-        <Image
-          src={PLACEHOLDER.hero}
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover"
-        />
-        {/* Sits under the text only. A wash across the whole frame would flatten
-            the image; this keeps the top and bottom readable and the middle clean. */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/45" />
+      <section className="bleed relative -mt-6 h-[88vh] min-h-[560px] overflow-hidden bg-soft-800">
+        {/* Rendered as an <Image> rather than a CSS background so Next serves a
+            size appropriate to the viewport and can prioritise it as the LCP
+            element. It is also scoped to the hero: as a fixed page-wide
+            backdrop the same photograph sat behind the product grid and the
+            editorial copy, where near-black text on a photograph is a
+            legibility problem rather than a design. */}
+        {heroImage && (
+          <Image src={heroImage} alt="" fill priority sizes="100vw" className="object-cover" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/10 to-black/50" />
 
         <div className="relative flex h-full flex-col justify-between p-5 sm:p-8">
-          <div className="flex items-start justify-between text-white">
+          <div className="flex items-start justify-between text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.55)]">
             <span className="type-micro">Vinx / Collection 001</span>
             <span className="type-micro hidden sm:block">Fall — Winter</span>
           </div>
 
-          <div className="text-white">
-            <h1 className="type-display max-w-4xl text-[13vw] leading-[0.9] sm:text-[8vw]">
+          <div className="pb-16 text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.55)] sm:pb-24">
+            <h1 className="type-display max-w-4xl text-4xl leading-[0.98] sm:text-6xl lg:text-7xl">
               The new collection
             </h1>
 
@@ -106,33 +115,44 @@ export default async function HomePage() {
       </section>
 
       {/* ---------------------------------------------------------------- */}
-      {/* Categories — edge to edge, no gutters between frames              */}
+      {/* Categories — floating square cards over the hero edge             */}
       {/* ---------------------------------------------------------------- */}
       {categories.length > 0 && (
-        <section className="bleed mt-px grid grid-cols-2 gap-px bg-soft-200 lg:grid-cols-4">
-          {categories.map((category, index) => (
-            <Link
-              key={category.slug}
-              href={`/products?category=${category.slug}`}
-              className="group relative aspect-[3/4] overflow-hidden bg-soft-100"
-            >
-              <Image
-                src={PLACEHOLDER.categories[index % PLACEHOLDER.categories.length]}
-                alt=""
-                fill
-                sizes="(max-width: 1024px) 50vw, 25vw"
-                className="object-cover grayscale transition-all duration-[1200ms] ease-apple group-hover:scale-[1.03] group-hover:grayscale-0"
-              />
-              <div className="absolute inset-0 bg-black/15 transition-colors duration-700 group-hover:bg-black/5" />
+        <section className="bleed relative z-10 -mt-12 grid max-w-5xl grid-cols-2 gap-3 px-5 sm:-mt-16 sm:gap-5 sm:px-8 lg:-mt-20 lg:grid-cols-4 lg:px-0">
+          {categories.map((category, index) => {
+            const tileImage = firstExistingImage(
+              HOME_IMAGES.categories[index % HOME_IMAGES.categories.length]
+            );
 
-              <span className="type-micro absolute right-4 top-4 text-white/70">
-                {String(index + 1).padStart(2, "0")}
-              </span>
-              <span className="type-micro absolute bottom-5 left-5 text-white transition-transform duration-700 group-hover:translate-x-1">
-                {category.name}
-              </span>
-            </Link>
-          ))}
+            return (
+              <Link
+                key={category.slug}
+                href={`/products?category=${category.slug}`}
+                className="group relative aspect-square overflow-hidden rounded-lg bg-soft-200 shadow-[0_3px_16px_rgba(20,24,20,0.06)] transition-shadow duration-500 hover:shadow-[0_8px_24px_rgba(20,24,20,0.1)]"
+              >
+                {/* A tile whose photograph is missing falls back to the plain
+                    ground above, which still carries its label and stays
+                    clickable — a deliberate blank rather than a broken frame. */}
+                {tileImage && (
+                  <Image
+                    src={tileImage}
+                    alt=""
+                    fill
+                    sizes="(max-width: 1024px) 50vw, 25vw"
+                    className="object-cover saturate-[0.9] transition-transform duration-[900ms] ease-apple group-hover:scale-[1.035] group-hover:saturate-100"
+                  />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent transition-opacity duration-500 group-hover:opacity-90" />
+
+                <span className="type-micro absolute right-4 top-4 text-white/70">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span className="type-micro absolute bottom-5 left-5 text-white transition-transform duration-700 group-hover:translate-x-1">
+                  {category.name}
+                </span>
+              </Link>
+            );
+          })}
         </section>
       )}
 
@@ -158,7 +178,12 @@ export default async function HomePage() {
         {products.length > 0 ? (
           <ProductGrid columns={4} className="mt-10">
             {products.map((product, index) => (
-              <ProductCard key={product.id} product={product} priority={index < 4} />
+              <ProductCard
+                key={product.id}
+                product={product}
+                priority={index < 4}
+                mockupSrc={PRODUCT_MOCKUPS[product.category.slug] ?? PRODUCT_MOCKUPS["t-shirts"]}
+              />
             ))}
           </ProductGrid>
         ) : (
@@ -173,13 +198,15 @@ export default async function HomePage() {
       {/* ---------------------------------------------------------------- */}
       <section className="mt-24 grid gap-10 sm:mt-36 lg:grid-cols-2 lg:items-center lg:gap-20">
         <div className="relative aspect-[4/5] overflow-hidden bg-soft-100">
-          <Image
-            src={PLACEHOLDER.editorial}
-            alt=""
-            fill
-            sizes="(max-width: 1024px) 100vw, 50vw"
-            className="object-cover grayscale"
-          />
+          {editorialImage && (
+            <Image
+              src={editorialImage}
+              alt=""
+              fill
+              sizes="(max-width: 1024px) 100vw, 50vw"
+              className="object-cover grayscale"
+            />
+          )}
         </div>
 
         <div className="max-w-md">

@@ -88,7 +88,16 @@ export function Section({
   return <Tag className={`py-10 sm:py-14 ${className}`}>{children}</Tag>;
 }
 
-/** Responsive product grid. Columns are the desktop maximum; it steps down. */
+/**
+ * Responsive product grid. Columns are the desktop maximum; it steps down.
+ *
+ * The horizontal gap is deliberately tight and the vertical one is not. Tiles
+ * sitting close together read as a continuous run of photography — the density
+ * is the point, it is what makes a collection look like a collection. The
+ * vertical gap has to stay generous because each tile carries four lines of
+ * detail beneath it, and without that space the swatches of one row crowd the
+ * photograph of the next.
+ */
 export function ProductGrid({
   children,
   columns = 4,
@@ -104,7 +113,7 @@ export function ProductGrid({
     4: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"
   }[columns];
 
-  return <div className={`grid gap-x-4 gap-y-10 sm:gap-x-6 ${cols} ${className}`}>{children}</div>;
+  return <div className={`grid gap-x-2 gap-y-12 sm:gap-x-3 ${cols} ${className}`}>{children}</div>;
 }
 
 // ---------------------------------------------------------------------------
@@ -116,7 +125,7 @@ export function ProductGrid({
 // object, not neighbouring sizes on a ramp.
 const HEADING_SIZES: Record<number, string> = {
   1: "text-5xl sm:text-7xl",
-  2: "text-3xl sm:text-5xl",
+  2: "text-3xl sm:text-4xl",
   3: "text-2xl sm:text-3xl",
   4: "text-xl sm:text-2xl",
   5: "text-lg",
@@ -153,16 +162,55 @@ export function Badge({
   variant?: "default" | "accent" | "muted" | "alert";
 }) {
   const variants = {
-    default: "bg-soft-700 text-white",
-    accent: "bg-celadon text-soft-700",
-    muted: "bg-white text-soft-700 border border-soft-300",
+    default: "bg-soft-800 text-white",
+    accent: "bg-celadon text-soft-800",
+    muted: "bg-white text-soft-800 border border-soft-300",
     alert: "bg-vienna-red text-white"
   };
   return (
-    <span
-      className={`inline-block px-2 py-1 text-[10px] font-medium uppercase tracking-[0.12em] ${variants[variant]}`}
-    >
-      {children}
+    <span className={`type-micro inline-block px-2 py-1 ${variants[variant]}`}>{children}</span>
+  );
+}
+
+/**
+ * A status indicator for the back office: a small coloured marker plus a
+ * neutral label.
+ *
+ * The storefront has no colour by design, but admin is a different problem —
+ * someone scanning two hundred orders needs to find the three that need
+ * attention without reading every row, and an all-neutral list makes that
+ * impossible. The compromise is to keep the semantic signal while dropping
+ * the filled pill: colour carries meaning in a 6px square, the text stays
+ * near-black, and a long list reads as a list rather than a bag of sweets.
+ */
+const STATUS_TONES: Record<string, string> = {
+  // Needs someone to act
+  PENDING: "bg-gold",
+  FAILED: "bg-vienna-red",
+  // Settled, healthy
+  PAID: "bg-vienna-green",
+  DELIVERED: "bg-vienna-green",
+  PUBLISHED: "bg-vienna-green",
+  // In motion or inert
+  SHIPPED: "bg-soft-500",
+  REFUNDED: "bg-soft-400",
+  CANCELLED: "bg-soft-300",
+  DRAFT: "bg-soft-300",
+  // Generic tones, for states that are not order statuses. Without these a
+  // caller has to borrow an unrelated status — passing "PAID" to mean "2FA is
+  // on" would render correctly today and mislead whoever reads it next.
+  ACTIVE: "bg-vienna-green",
+  ATTENTION: "bg-gold",
+  INACTIVE: "bg-soft-300"
+};
+
+export function StatusPill({ status, label }: { status: string; label?: string }) {
+  const tone = STATUS_TONES[status.toUpperCase()] ?? "bg-soft-300";
+
+  return (
+    <span className="type-micro inline-flex items-center gap-2 whitespace-nowrap text-soft-700">
+      <span aria-hidden className={`h-1.5 w-1.5 shrink-0 ${tone}`} />
+      {label ?? status}
     </span>
   );
 }

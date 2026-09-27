@@ -10,16 +10,21 @@ const config: Config = {
         // which reads warm and artisanal. A modernist luxury palette has no
         // temperature at all, so the only colour on the page is the product.
         // The token names are unchanged, so nothing that consumes them breaks.
+        // Warm neutrals. The previous ramp was a true grey with no temperature
+        // at all, which is right for a stark modernist storefront and wrong
+        // here: this reference sits on a soft sand-grey ground that flatters
+        // skin tones and knitwear, where a cold grey makes both look grey too.
+        // Token names are unchanged, so nothing consuming them breaks.
         soft: {
-          50: "#fafafa",
-          100: "#f4f4f4",
-          200: "#e5e5e5",
-          300: "#d4d4d4",
-          400: "#a3a3a3",
-          500: "#737373",
-          600: "#404040",
-          700: "#171717",
-          800: "#0a0a0a",
+          50: "#faf9f8",
+          100: "#f2f0ed",
+          200: "#e7e3df",
+          300: "#d5d0ca",
+          400: "#a8a29b",
+          500: "#79736c",
+          600: "#4a453f",
+          700: "#211e1b",
+          800: "#121010",
           900: "#000000"
         },
         // NEW: Luxury grays (extends soft palette for luxury aesthetic)

@@ -114,6 +114,11 @@ model ProductVariant {
   product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
   size       String      // e.g. S, M, L, XL
   color      String
+  // The swatch shown on the product grid, as #rrggbb. Nullable because every
+  // variant that existed before this column keeps working: the storefront
+  // falls back to matching the colour NAME against a lookup table, which is a
+  // guess. Setting this replaces the guess with the actual garment colour.
+  colorHex   String?
   sku        String      @unique
   quantity   Int         @default(0)
   inStock    Boolean     @default(true)

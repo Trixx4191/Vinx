@@ -3,20 +3,26 @@
 @tailwind utilities;
 
 :root {
-  /* Pure white, not the warm #f5f5f3 this used to be. A warm ground reads as
-     artisanal and soft; the modernist luxury houses sit on true white so the
-     product is the only colour on the page. */
-  --bg: #ffffff;
-  --fg: #0a0a0a;
-  --muted: #6b6b6b;
+  /* A warm off-white rather than pure white. Product photography on a true
+     white ground reads as a catalogue sheet; a few degrees of warmth reads as
+     a lookbook, and it is the single change that does most to move this away
+     from a stark modernist storefront. */
+  --bg: #faf9f8;
+  --fg: #121010;
+  --muted: #79736c;
   --glass: #ffffff;
-  --glass-border: #e5e5e5;
-  --accent: #0a0a0a;
+  --glass-border: #e7e3df;
+  --accent: #121010;
 
-  /* Display tracking. Large type is pulled in, small caps pushed out — the
-     contrast between the two is doing most of the stylistic work. */
-  --track-display: -0.03em;
-  --track-micro: 0.18em;
+  /* The ground behind a product shot. Deliberately a step darker than the page
+     so a tile reads as an object on the page rather than a hole in it. */
+  --product-ground: #f0edea;
+
+  /* Display type still pulls in, but labels are tracked far less than before.
+     Wide-tracked micro-caps read as couture formality; at this spacing the
+     same label reads as a garment tag, which is the register here. */
+  --track-display: -0.02em;
+  --track-micro: 0.08em;
 }
 
 html {
@@ -72,6 +78,15 @@ h4 {
   pointer-events: none;
 }
 
+/* The homepage hero was briefly a fixed, page-wide CSS background here. It has
+   moved into the hero section as a next/image element, for three reasons:
+   a background image gets none of Next's sizing or format negotiation and
+   cannot be the prioritised LCP element; spanning the whole page put the
+   photograph behind the product grid and the editorial copy, where near-black
+   text on a photograph stops being legible; and `background-attachment: fixed`
+   is ignored outright by iOS Safari while causing repaint jank elsewhere, so
+   the parallax it was buying did not survive the trip to a phone. */
+
 body:has(.signup-page) .bg-layer {
   background: var(--bg);
 }
@@ -125,8 +140,12 @@ body:has(.signup-page) .bg-layer {
     animation: slideUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
+  /* The frame a product shot sits in. No border: in a gapless grid the tiles
+     are separated by the ground itself, and outlining each one would draw a
+     cage over what should read as a continuous sheet of photography. */
   .product-stage {
-    @apply relative overflow-hidden rounded-none border border-soft-200 bg-white;
+    @apply relative overflow-hidden rounded-none;
+    background: var(--product-ground);
   }
 
   .hero-glass {
@@ -179,12 +198,18 @@ img {
   }
 }
 
-/* Keep legacy route components in the same sharp editorial system. */
+/* Flatten the large panel radii inherited from an earlier iteration, so cards
+   and sections stay square.
+
+   `.rounded-full` is deliberately NOT in this list any more. It was, while the
+   system was a stark editorial one where nothing curved — but a colourway
+   swatch and a save button are circles by nature, and forcing them square made
+   the markup say one thing and the screen show another. The blanket override
+   stays only for the oversized panel radii it was written for. */
 .rounded-xl,
 .rounded-2xl,
 .rounded-3xl,
-.rounded-4xl,
-.rounded-full {
+.rounded-4xl {
   border-radius: 0 !important;
 }
 
@@ -221,8 +246,8 @@ img {
 }
 
 .type-micro {
-  font-size: 0.625rem;
-  font-weight: 400;
+  font-size: 0.6875rem;
+  font-weight: 500;
   letter-spacing: var(--track-micro);
   text-transform: uppercase;
   line-height: 1.4;

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { expirePendingOrders } from "@/lib/orders";
+import { sendOrderConfirmation } from "@/lib/email/notifications";
 
 /**
  * The only function in the codebase allowed to mark an order PAID.
@@ -47,6 +48,17 @@ export async function markOrderPaid(orderId: string, paymentRef: string, verifie
       statusHistory: { create: { status: "PAID", note: `Payment verified via ${paymentRef}` } }
     }
   });
+
+  // The receipt goes out after the order is durably marked paid, and its
+  // outcome is deliberately ignored.
+  //
+  // This ordering matters. The money has already moved and the database
+  // already reflects it; if the mail host is unreachable the correct
+  // behaviour is a paid order with no receipt, not an error response that
+  // makes a provider retry its webhook against a settled order.
+  // sendOrderConfirmation never throws, but it is awaited so the process is
+  // not torn down mid-send in a serverless environment.
+  await sendOrderConfirmation(orderId);
 
   return { ok: true as const, alreadyPaid: false };
 }

@@ -319,8 +319,156 @@ set.
 - Rate limiting uses Upstash Redis when `UPSTASH_REDIS_REST_URL` and
   `UPSTASH_REDIS_REST_TOKEN` are configured. Without those variables it falls
   back to an in-memory limiter suitable only for a single server instance.
-- The repository currently has no automated test files. `npm run build` is the
+- `npm test` runs the unit suite (see **Tests**); `npm run build` is the
   primary type-check and production validation command.
+
+## Transactional email
+
+Order confirmations go out when payment is verified; a shipping notice goes out
+the first time an admin moves an order to `SHIPPED`. Configure SMTP in `.env`
+(see `.env.example`). With it unset the shop still takes orders — it logs each
+message it would have sent and carries on.
+
+The rule that shapes this code: **sending email must never break the thing that
+triggered it.** An order is marked paid only after a provider confirms the money
+moved. If the receipt then fails to send, the payment has still happened and the
+order must still be paid — throwing there would turn a settled transaction into
+an error response and make the provider retry its webhook against an order that
+is already complete. So every function in `src/lib/email/` resolves; failures are
+logged and returned, never raised.
+
+Templates are pure functions in `src/lib/email/templates.ts`, which is what makes
+them testable. All interpolated values are HTML-escaped: product names, colours
+and addresses are free text someone typed, and a name containing markup would
+otherwise land in a customer's inbox.
+
+The shipping notice fires only on the *transition* into shipped, so correcting a
+typo in a tracking number does not send a second "on its way" email.
+
+## Scheduled stock release
+
+Checkout reserves stock for 30 minutes so two people cannot buy the last item
+while one is still on a payment page. Releasing it used to be opportunistic —
+it happened when some other request touched checkout — so a quiet night left
+stock locked behind orders nobody was going to pay for.
+
+`GET|POST /api/cron/release-stock` gives a scheduler something to call:
+
+```
+curl -H "Authorization: Bearer $CRON_SECRET" https://yourdomain.com/api/cron/release-stock
+```
+
+Every five to fifteen minutes is reasonable. The endpoint is **disabled while
+`CRON_SECRET` is unset** — a route that mutates inventory fails closed rather
+than being open because a variable was forgotten — and the secret is compared in
+constant time. An unauthorised caller gets a 404, matching `/api/admin/*`, so it
+learns nothing about whether the path exists.
+
+It reports how many orders it actually released, which is not the same as how
+many it found: the scheduled job and an opportunistic call can race, and only
+one wins the claim on each order.
+
+## Account self-service
+
+`/account` lets a customer change their password and edit their delivery
+address.
+
+Changing a password requires the current one, checked server-side. Possession of
+a live session is deliberately not enough — otherwise an unattended browser or a
+stolen cookie becomes permanent account takeover.
+
+Editing an address **never rewrites a row an order points at**. `Order.addressId`
+references a specific address, and an order is a record of where something was
+actually sent; editing that row in place would silently change the shipping
+address on past, possibly delivered, orders. So an address already used by an
+order is left untouched and a new default is created beside it.
+
+Note that changing a password does not sign other devices out. NextAuth's JWT
+does not carry the password hash, so it is not invalidated by the change — doing
+that properly needs a token version on the user record.
+
+## Catalog search and pagination
+
+Filtering, sorting and paging happen in the database, 24 products to a page.
+Previously the page loaded every published product and filtered in the browser,
+which meant a visitor downloaded the whole catalog to look at one category.
+
+All state lives in the URL, so a filtered view is shareable, survives a refresh,
+and works with the back button. `src/lib/productQuery.ts` translates params into
+a query and is a pure function, so the parsing is tested without a database.
+
+Two details worth keeping: every sort ends with a unique tiebreak on `id`,
+because two products at the same price otherwise have no defined order and the
+database may return one on page 1 and again on page 2 while dropping another;
+and the search term is length-capped before it reaches a `LIKE`.
+
+## Colourway swatches
+
+The product grid shows a dot per colourway. Each dot's colour comes from one of
+two places, in order:
+
+1. **`ProductVariant.colorHex`** — set from the colour picker beside each
+   variant row in `/admin/products`. This is the actual garment colour.
+2. **A name match** — `src/lib/swatch.ts` matches the free-text `color` against
+   a table of about fifty garment colours, handling compound names so
+   "Light Heather Grey" finds heather grey rather than plain grey. This is a
+   guess, and it is why the column exists.
+
+An unmapped name still renders, as a muted tone derived deterministically from
+the name, so adding a colour can never produce a missing or invisible dot. Pale
+swatches get an outline: measured from relative luminance for stored hex values,
+matched against a word list for guessed ones.
+
+`colorHex` is validated as `#rrggbb`, with shorthand expanded and the value
+lower-cased so only one shape is ever stored. The pattern is strict because this
+value is interpolated into a `style` attribute on the storefront — nothing but a
+colour can be put in it.
+
+The column is nullable and the fallback is permanent, so variants created before
+it keep working untouched. Setting a colour is an improvement, not a migration
+you have to finish.
+
+## Tests
+
+```
+npm test          # run once
+npm run test:watch
+```
+
+The suite uses Node's built-in test runner with `tsx`, so it adds no
+dependencies. Vitest requires `@types/node` v22+ while this project pins v20; a
+toolchain bump is a poor trade for a suite of pure-function tests.
+
+Coverage is deliberately narrow — the logic where a mistake costs money, access
+or data. Everything tested is a pure function, so none of it needs a database.
+
+- **`roles`** — the checks gating every admin route. The key assertion is that
+  `SUPER_ADMIN` passes an admin check: this was previously thirteen hand-written
+  `role !== "ADMIN"` comparisons, each of which would have excluded the new role,
+  including the 2FA gate in `auth.ts`.
+- **`validation`** — chiefly the charge-integrity guarantee: `checkoutSchema`
+  has no price field, so a tampered request carrying one has it stripped before
+  the route sees it. Also the swatch hex pattern, which is an injection surface.
+- **`storage`** — the content-type allowlist, and the key pattern the local
+  upload route checks a client-supplied path against before writing to disk.
+- **`publicAsset`** — that image lookups cannot escape `public/`.
+- **`swatch`**, **`orderStatus`**, **`product`** — colour resolution and its
+  fallbacks, status wording, timeline projection, minor-unit money conversion,
+  and product media ordering.
+
+The suite is mutation-checked: reverting `isAdminRole` to an exact `"ADMIN"`
+comparison fails two tests, adding a `price` field back to `checkoutSchema` fails
+one, loosening the hex pattern fails two, and dropping the path-traversal guard
+fails one. Tests that cannot fail are not worth running.
+
+Not covered, and worth being precise about: anything needing a database or
+network. That includes the checkout transaction's stock decrement, payment
+webhook signature verification, the staff-management lockout guards, and — added
+more recently — the cron endpoint's authorisation and the current-password check
+on `/api/account/password`. Those last two are security-relevant route handlers
+rather than pure functions, so the suite does not reach them. They need
+integration tests against a real Postgres instance, which is the natural next
+step for this suite.
 
 ## Environment variables
 

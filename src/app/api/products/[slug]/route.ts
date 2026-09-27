@@ -8,7 +8,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     include: {
       category: { select: { name: true, slug: true } },
       variants: {
-        select: { id: true, size: true, color: true, quantity: true, inStock: true, sku: true }
+        select: { id: true, size: true, color: true, colorHex: true, quantity: true, inStock: true, sku: true }
       }
     }
   });

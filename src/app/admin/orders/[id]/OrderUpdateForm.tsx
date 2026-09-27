@@ -56,7 +56,7 @@ export default function OrderUpdateForm({
 
   return (
     <form onSubmit={handleSubmit} className="glass rounded-3xl p-5 sm:p-6">
-      <p className="mb-5 rounded-2xl bg-white/60 p-3 text-sm text-soft-600">Next recommended step: <strong>{currentStatus === "PENDING" ? "confirm payment" : currentStatus === "PAID" ? "prepare shipment" : currentStatus === "SHIPPED" ? "add delivery confirmation" : "review order status"}</strong></p>
+      <p className="mb-5 rounded-2xl bg-white p-3 text-sm text-soft-600">Next recommended step: <strong>{currentStatus === "PENDING" ? "confirm payment" : currentStatus === "PAID" ? "prepare shipment" : currentStatus === "SHIPPED" ? "add delivery confirmation" : "review order status"}</strong></p>
       <div>
         <label className="field-label">Status</label>
         <select value={status} onChange={(e) => setStatus(e.target.value)} className="input-soft">
@@ -83,7 +83,7 @@ export default function OrderUpdateForm({
         <label className="field-label">Note</label>
         <input value={note} onChange={(e) => setNote(e.target.value)} className="input-soft" placeholder="Optional note for the timeline" />
       </div>
-      {error && <p className="rounded-2xl bg-red-50/80 p-3 text-sm text-red-700">{error}</p>}
+      {error && <p className="border-l-2 border-vienna-red pl-3 text-sm text-vienna-red">{error}</p>}
       <button type="submit" disabled={loading} className="btn-primary w-full py-3 disabled:opacity-60">
         {loading ? "Saving..." : "Save changes"}
       </button>

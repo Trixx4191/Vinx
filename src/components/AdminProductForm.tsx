@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ImageUploadField from "@/components/ImageUploadField";
+import { swatchColour } from "@/lib/swatch";
 
-type VariantRow = { size: string; color: string; sku: string; quantity: number };
+type VariantRow = { size: string; color: string; colorHex?: string; sku: string; quantity: number };
 type ProductFormData = { id?: string; name: string; description: string; material: string; price: number; categorySlug: string; frontImageUrl: string; backImageUrl: string; hoverVideoUrl?: string; galleryImages: string[]; isPublished: boolean; variants: VariantRow[] };
 
 // Matches the cap in createProductSchema, so the form can't offer a slot the
@@ -22,7 +23,30 @@ export default function AdminProductForm({ initial }: { initial?: ProductFormDat
   function setField(field: keyof ProductFormData, value: string | boolean | string[]) { setForm((current) => ({ ...current, [field]: value })); }
   function addGalleryImage(url: string) { setForm((current) => current.galleryImages.length >= MAX_GALLERY_IMAGES ? current : { ...current, galleryImages: [...current.galleryImages, url] }); }
   function removeGalleryImage(index: number) { setForm((current) => ({ ...current, galleryImages: current.galleryImages.filter((_, imageIndex) => imageIndex !== index) })); }
-  function updateVariant(index: number, field: keyof VariantRow, value: string) { setForm((current) => ({ ...current, variants: current.variants.map((variant, variantIndex) => variantIndex === index ? { ...variant, [field]: field === "quantity" ? Math.max(0, Number(value) || 0) : value } : variant) })); }
+  function updateVariant(index: number, field: keyof VariantRow, value: string) {
+    setForm((current) => ({
+      ...current,
+      variants: current.variants.map((variant, variantIndex) => {
+        if (variantIndex !== index) return variant;
+
+        const next = {
+          ...variant,
+          [field]: field === "quantity" ? Math.max(0, Number(value) || 0) : value
+        };
+
+        // Typing a colour name seeds the swatch with the storefront's own
+        // guess at that colour, so the picker opens somewhere close instead of
+        // at black. Only while the admin has not set one themselves — once
+        // they pick a colour, retyping the name must not overwrite it.
+        if (field === "color" && !variant.colorHex) {
+          const guess = swatchColour(value);
+          if (guess.startsWith("#")) next.colorHex = guess;
+        }
+
+        return next;
+      })
+    }));
+  }
   function removeVariant(index: number) { setForm((current) => ({ ...current, variants: current.variants.filter((_, variantIndex) => variantIndex !== index) })); }
 
   async function submit(event: React.FormEvent) {
@@ -38,10 +62,10 @@ export default function AdminProductForm({ initial }: { initial?: ProductFormDat
   }
 
   return <form onSubmit={submit} className="space-y-6">
-    <section className="glass rounded-3xl p-5 sm:p-7"><p className="text-[10px] uppercase tracking-[0.16em] text-soft-400">01 / Basic information</p><div className="mt-5 space-y-4"><label className="block"><span className="field-label">Product name</span><input value={form.name} onChange={(event) => setField("name", event.target.value)} required className="input-soft" /></label><label className="block"><span className="field-label">Description</span><textarea value={form.description} onChange={(event) => setField("description", event.target.value)} required rows={4} className="input-soft" /></label><label className="block"><span className="field-label">Material</span><input value={form.material} onChange={(event) => setField("material", event.target.value)} required className="input-soft" /></label></div></section>
-    <section className="glass rounded-3xl p-5 sm:p-7"><p className="text-[10px] uppercase tracking-[0.16em] text-soft-400">02 / Pricing and category</p><div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="block"><span className="field-label">Price (GHS)</span><input type="number" min="0.01" step="0.01" value={priceText} onChange={(event) => setPriceText(event.target.value)} required className="input-soft" /></label><label className="block"><span className="field-label">Category slug</span><input value={form.categorySlug} onChange={(event) => setField("categorySlug", event.target.value)} placeholder="t-shirts" required className="input-soft" /></label></div><label className="mt-5 flex items-center gap-3 text-sm text-soft-600"><input type="checkbox" checked={form.isPublished} onChange={(event) => setField("isPublished", event.target.checked)} className="accent-soft-700" /> Published on the storefront</label></section>
+    <section className="glass rounded-3xl p-5 sm:p-7"><p className="type-micro text-soft-400">01 / Basic information</p><div className="mt-5 space-y-4"><label className="block"><span className="field-label">Product name</span><input value={form.name} onChange={(event) => setField("name", event.target.value)} required className="input-soft" /></label><label className="block"><span className="field-label">Description</span><textarea value={form.description} onChange={(event) => setField("description", event.target.value)} required rows={4} className="input-soft" /></label><label className="block"><span className="field-label">Material</span><input value={form.material} onChange={(event) => setField("material", event.target.value)} required className="input-soft" /></label></div></section>
+    <section className="glass rounded-3xl p-5 sm:p-7"><p className="type-micro text-soft-400">02 / Pricing and category</p><div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="block"><span className="field-label">Price (GHS)</span><input type="number" min="0.01" step="0.01" value={priceText} onChange={(event) => setPriceText(event.target.value)} required className="input-soft" /></label><label className="block"><span className="field-label">Category slug</span><input value={form.categorySlug} onChange={(event) => setField("categorySlug", event.target.value)} placeholder="t-shirts" required className="input-soft" /></label></div><label className="mt-5 flex items-center gap-3 text-sm text-soft-600"><input type="checkbox" checked={form.isPublished} onChange={(event) => setField("isPublished", event.target.checked)} className="accent-soft-700" /> Published on the storefront</label></section>
     <section className="glass rounded-3xl p-5 sm:p-7">
-      <p className="text-[10px] uppercase tracking-[0.16em] text-soft-400">03 / Media</p>
+      <p className="type-micro text-soft-400">03 / Media</p>
       <p className="mt-2 text-sm text-soft-500">Front and back are required. The video and detail shots are optional.</p>
 
       <div className="mt-5 grid gap-5 sm:grid-cols-2">
@@ -89,7 +113,28 @@ export default function AdminProductForm({ initial }: { initial?: ProductFormDat
         )}
       </div>
     </section>
-    <section className="glass rounded-3xl p-5 sm:p-7"><div className="flex items-start justify-between gap-4"><div><p className="text-[10px] uppercase tracking-[0.16em] text-soft-400">04 / Variants and inventory</p><p className="mt-2 text-sm text-soft-500">Each size, color, and SKU combination is tracked separately.</p></div><button type="button" onClick={() => setForm((current) => ({ ...current, variants: [...current.variants, { size: "", color: "", sku: "", quantity: 0 }] }))} className="btn-secondary shrink-0 px-3 py-2 text-xs">Add variant</button></div><div className="mt-5 space-y-3">{form.variants.map((variant, index) => <div key={`${variant.sku}-${index}`} className="grid gap-2 sm:grid-cols-[1fr_1fr_1.4fr_0.7fr_auto]"><input placeholder="Size" value={variant.size} onChange={(event) => updateVariant(index, "size", event.target.value)} required className="input-soft py-2.5" /><input placeholder="Color" value={variant.color} onChange={(event) => updateVariant(index, "color", event.target.value)} required className="input-soft py-2.5" /><input placeholder="SKU" value={variant.sku} onChange={(event) => updateVariant(index, "sku", event.target.value)} required className="input-soft py-2.5" /><input placeholder="Qty" type="number" min="0" value={variant.quantity} onChange={(event) => updateVariant(index, "quantity", event.target.value)} required className="input-soft py-2.5" /><button type="button" onClick={() => removeVariant(index)} disabled={form.variants.length === 1} className="px-2 text-xs text-soft-400 hover:text-red-500 disabled:opacity-30">Remove</button></div>)}</div></section>
-    {error && <p className="rounded-2xl bg-red-50/80 p-4 text-sm text-red-700">{error}</p>}{saved && <p className="rounded-2xl bg-emerald-50/80 p-4 text-sm text-emerald-800">Product saved.</p>}<button type="submit" disabled={loading} className="btn-primary w-full py-3.5 sm:w-auto">{loading ? "Saving product..." : form.id ? "Save changes" : "Create product"}</button>
+    <section className="glass rounded-3xl p-5 sm:p-7"><div className="flex items-start justify-between gap-4"><div><p className="type-micro text-soft-400">04 / Variants and inventory</p><p className="mt-2 text-sm text-soft-500">Each size, color, and SKU combination is tracked separately.</p></div><button type="button" onClick={() => setForm((current) => ({ ...current, variants: [...current.variants, { size: "", color: "", colorHex: "", sku: "", quantity: 0 }] }))} className="btn-secondary shrink-0 px-3 py-2 text-xs">Add variant</button></div>
+      <p className="mt-3 text-xs text-soft-400">The swatch beside each colour is what shoppers see on the grid. It is seeded from the colour name — adjust it to match the actual garment.</p>
+      <div className="mt-5 space-y-3">
+        {form.variants.map((variant, index) => (
+          <div key={`${variant.sku}-${index}`} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto_1.4fr_0.7fr_auto] sm:items-center">
+            <input placeholder="Size" value={variant.size} onChange={(event) => updateVariant(index, "size", event.target.value)} required className="input-soft py-2.5" />
+            <input placeholder="Color" value={variant.color} onChange={(event) => updateVariant(index, "color", event.target.value)} required className="input-soft py-2.5" />
+            <input
+              type="color"
+              aria-label={`Swatch colour for ${variant.color || `variant ${index + 1}`}`}
+              title="Swatch shown on the product grid"
+              value={variant.colorHex && /^#[0-9a-fA-F]{6}$/.test(variant.colorHex) ? variant.colorHex : "#c2bdb4"}
+              onChange={(event) => updateVariant(index, "colorHex", event.target.value)}
+              className="h-9 w-12 cursor-pointer border border-soft-300 bg-white p-1"
+            />
+            <input placeholder="SKU" value={variant.sku} onChange={(event) => updateVariant(index, "sku", event.target.value)} required className="input-soft py-2.5" />
+            <input placeholder="Qty" type="number" min="0" value={variant.quantity} onChange={(event) => updateVariant(index, "quantity", event.target.value)} required className="input-soft py-2.5" />
+            <button type="button" onClick={() => removeVariant(index)} disabled={form.variants.length === 1} className="px-2 text-xs text-soft-400 hover:text-vienna-red disabled:opacity-30">Remove</button>
+          </div>
+        ))}
+      </div>
+    </section>
+    {error && <p className="border-l-2 border-vienna-red pl-3 text-sm text-vienna-red">{error}</p>}{saved && <p className="border-l-2 border-vienna-green pl-3 text-sm text-soft-600">Product saved.</p>}<button type="submit" disabled={loading} className="btn-primary w-full py-3.5 sm:w-auto">{loading ? "Saving product..." : form.id ? "Save changes" : "Create product"}</button>
   </form>;
 }

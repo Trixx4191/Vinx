@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/types/product";
 import { shortStatusLabel, needsAttention } from "@/lib/orderStatus";
 import { Heading, Kicker } from "@/components/luxury";
+import AccountSettings from "./AccountSettings";
 
 export default async function AccountPage() {
   const session = await getServerSession(authOptions);
@@ -124,6 +125,21 @@ export default async function AccountPage() {
           <p className="py-16 text-center text-sm text-soft-500">Your first order will appear here.</p>
         )}
       </section>
+
+      <AccountSettings
+        address={
+          address
+            ? {
+                fullName: address.fullName,
+                phone: address.phone,
+                line1: address.line1,
+                line2: address.line2,
+                city: address.city,
+                region: address.region
+              }
+            : null
+        }
+      />
     </div>
   );
 }
