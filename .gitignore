@@ -6,7 +6,6 @@ out
 *.log
 .DS_Store
 .env.example
-
 # Files uploaded through the development-only local storage fallback. These
 # are your working product shots, not source — they belong in a bucket, not in
 # the repository.
