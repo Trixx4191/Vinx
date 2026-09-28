@@ -4,12 +4,20 @@ import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import BrandMark from "@/components/BrandMark";
+import { safeCallbackPath } from "@/lib/safeRedirect";
 
 function LoginForm() {
   const searchParams = useSearchParams();
-  const requestedCallback = searchParams.get("callbackUrl");
-  const callbackUrl = requestedCallback?.startsWith("/") ? requestedCallback : "/";
+  const callbackUrl = safeCallbackPath(searchParams.get("callbackUrl"));
+  // Why they are here, when a sign-out sent them. Without it, being signed out
+  // after changing a password looks like the site broke.
+  const reason = searchParams.get("reason");
+  const notice =
+    reason === "password-changed"
+      ? "Password changed. Sign in with the new one."
+      : reason === "signed-out-everywhere"
+        ? "Signed out on every device."
+        : null;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
@@ -55,13 +63,13 @@ function LoginForm() {
   }
 
   return (
-    <div className="mx-auto max-w-sm py-16 sm:py-24">
-      <div className="text-center">
-        <BrandMark href={null} className="text-[15px]" />
-        <p className="type-micro mt-8 text-soft-400">Vinx / Account</p>
-        <h1 className="type-display mt-4 text-3xl text-soft-800">Welcome back</h1>
-        <p className="mt-4 text-sm text-soft-500">Log in to continue to your account.</p>
-      </div>
+    <div className="mx-auto max-w-xs py-20 sm:py-28">
+      <h1 className="text-center">Sign in</h1>
+      {notice && (
+        <p role="status" className="type-micro mt-3 text-center text-[var(--muted)]">
+          {notice}
+        </p>
+      )}
 
       {/* No panel. A bordered card around a login form adds a second frame
           inside a page that is already mostly empty space — the form reads
@@ -69,7 +77,7 @@ function LoginForm() {
       <form onSubmit={handleSubmit} className="mt-12">
         <div className="space-y-7">
           <div>
-            <label className="type-micro mb-2 block text-soft-400" htmlFor="login-email">
+            <label className="field-label" htmlFor="login-email">
               Email
             </label>
             <input
@@ -85,7 +93,7 @@ function LoginForm() {
           </div>
 
           <div>
-            <label className="type-micro mb-2 block text-soft-400" htmlFor="login-password">
+            <label className="field-label" htmlFor="login-password">
               Password
             </label>
             <input
@@ -102,7 +110,7 @@ function LoginForm() {
 
           {needsCode && (
             <div>
-              <label className="type-micro mb-2 block text-soft-400" htmlFor="login-code">
+              <label className="field-label" htmlFor="login-code">
                 Authenticator code
               </label>
               <input
@@ -120,7 +128,7 @@ function LoginForm() {
         </div>
 
         {error && (
-          <p role="alert" className="mt-6 border-l-2 border-vienna-red pl-3 text-sm text-vienna-red">
+          <p role="alert" className="type-micro mt-6 text-[var(--error)]">
             {error}
           </p>
         )}
@@ -130,9 +138,9 @@ function LoginForm() {
         </button>
       </form>
 
-      <p className="mt-10 text-center text-sm text-soft-500">
+      <p className="type-micro mt-10 text-center text-[var(--muted)]">
         New to Vinx?{" "}
-        <Link href="/signup" className="text-soft-800 underline underline-offset-4 transition-opacity hover:opacity-50">
+        <Link href="/signup" className="text-black underline underline-offset-4 transition-opacity hover:opacity-50">
           Create an account
         </Link>
       </p>

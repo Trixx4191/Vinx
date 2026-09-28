@@ -1,5 +1,9 @@
 import { notFound } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isAdminRole } from "@/lib/roles";
+import { releaseState, canView, canBuy } from "@/lib/release";
 import ProductDetailClient from "./ProductDetailClient";
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -28,15 +32,23 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
   if (!product) notFound();
 
-  const relatedProducts = await prisma.product.findMany({
-    where: { isPublished: true, categoryId: product.categoryId, id: { not: product.id } },
-    take: 4,
-    orderBy: { createdAt: "desc" },
-    include: {
-      category: { select: { name: true, slug: true } },
-      variants: { select: { id: true, size: true, color: true, colorHex: true, quantity: true, inStock: true, sku: true } }
-    }
-  });
+  const session = await getServerSession(authOptions);
+  const viewer = { isVip: Boolean(session?.user?.vip), isAdmin: isAdminRole(session?.user?.role) };
+  const state = releaseState(product);
 
-  return <ProductDetailClient product={product} relatedProducts={relatedProducts} />;
+  // An unopened drop is a 404 to anyone but an admin — the same response as a
+  // product that does not exist, so the page does not confirm it is coming.
+  if (!canView(state, viewer)) notFound();
+
+  return (
+    <ProductDetailClient
+      product={product}
+      access={{
+        state,
+        purchasable: canBuy(state, viewer),
+        releaseAt: product.releaseAt?.toISOString() ?? null,
+        signedIn: Boolean(session?.user?.id)
+      }}
+    />
+  );
 }

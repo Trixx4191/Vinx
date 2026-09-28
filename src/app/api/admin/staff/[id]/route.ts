@@ -62,7 +62,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
           const updated = await tx.user.update({
             where: { id },
-            data: { role },
+            // Bumping the version ends every session this person has open. The
+            // role is re-read from the database on each request anyway, so a
+            // demotion would take effect on their next click regardless — but
+            // a revoked admin should be signed out, not left holding a live
+            // session with its privileges quietly removed.
+            data: { role, sessionVersion: { increment: 1 } },
             select: { id: true, name: true, email: true, role: true }
           });
 

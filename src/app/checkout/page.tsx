@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { formatPrice } from "@/types/product";
-import { Heading, Kicker } from "@/components/luxury";
+import { Kicker } from "@/components/luxury";
 
 const PROVIDERS = [
   { value: "PAYSTACK", label: "Card / MTN MoMo / Telecel Cash", note: "Paystack" },
@@ -30,12 +30,9 @@ export default function CheckoutPage() {
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto max-w-lg py-24 text-center sm:py-32">
-        <Kicker>Checkout</Kicker>
-        <Heading level={1} size={2} className="mt-5">
-          Nothing to check out.
-        </Heading>
-        <p className="mt-5 text-sm text-soft-500">Add a piece to your bag first.</p>
+      <div className="flex flex-col items-center py-40 text-center">
+        <h1>Checkout</h1>
+        <p className="type-label mt-3 text-[var(--muted)]">Your bag is empty.</p>
       </div>
     );
   }
@@ -81,30 +78,24 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl">
-      <header className="border-b border-soft-200 pb-6">
-        <Kicker>Checkout</Kicker>
-        <Heading level={1} size={2} className="mt-4">
-          A considered finish.
-        </Heading>
-      </header>
+    <div className="mx-auto max-w-4xl pt-10">
+      <h1 className="text-center">Checkout</h1>
 
-      <nav aria-label="Checkout progress" className="mt-8 flex items-center gap-4">
-        <span className={`type-micro ${step === "shipping" ? "text-soft-800" : "text-soft-400"}`}>
+      <nav aria-label="Checkout progress" className="mt-4 flex items-center justify-center gap-4">
+        <span className={`type-micro ${step === "shipping" ? "text-black" : "text-[var(--muted)]"}`}>
           01 Shipping
         </span>
-        <span className="h-px w-8 bg-soft-300" aria-hidden />
-        <span className={`type-micro ${step === "payment" ? "text-soft-800" : "text-soft-400"}`}>
+        <span className="h-px w-6 bg-black/15" aria-hidden />
+        <span className={`type-micro ${step === "payment" ? "text-black" : "text-[var(--muted)]"}`}>
           02 Payment
         </span>
       </nav>
 
-      <div className="mt-10 grid gap-12 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-16">
+      <div className="mt-14 grid gap-14 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-20">
         <div>
           {step === "shipping" ? (
             <form onSubmit={continueToPayment}>
-              <h2 className="text-lg text-soft-800">Shipping details</h2>
-              <p className="mt-2 text-sm text-soft-500">Where should we send your pieces?</p>
+              <h2>Shipping details</h2>
 
               <div className="mt-8 space-y-6">
                 <Field label="Full name" value={fullName} onChange={setFullName} autoComplete="name" />
@@ -117,7 +108,7 @@ export default function CheckoutPage() {
               </div>
 
               {error && (
-                <p role="alert" className="mt-6 text-sm text-vienna-red">
+                <p role="alert" className="type-micro mt-6 text-[var(--error)]">
                   {error}
                 </p>
               )}
@@ -130,8 +121,7 @@ export default function CheckoutPage() {
             <div>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h2 className="text-lg text-soft-800">Payment method</h2>
-                  <p className="mt-2 text-sm text-soft-500">Choose how you would like to pay.</p>
+                  <h2>Payment method</h2>
                 </div>
                 <button
                   type="button"
@@ -173,7 +163,7 @@ export default function CheckoutPage() {
               </div>
 
               {error && (
-                <p role="alert" className="mt-6 text-sm text-vienna-red">
+                <p role="alert" className="type-micro mt-6 text-[var(--error)]">
                   {error}
                 </p>
               )}

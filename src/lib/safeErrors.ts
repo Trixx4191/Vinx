@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
+import { isStalePrismaClient } from "@/lib/prismaErrors";
 
 /**
  * Wrap a route handler's body in this. Any thrown error is logged in full
@@ -45,6 +46,30 @@ export async function withSafeErrors<T>(fn: () => Promise<T>): Promise<T | NextR
         );
       }
       return NextResponse.json({ error: "Request could not be processed" }, { status: 400 });
+    }
+
+    // The generated Prisma client is older than schema.prisma: a model was
+    // added (and perhaps migrated) but `prisma generate` never ran, so
+    // `prisma.someModel` is simply undefined and the first query on it throws
+    // a bare TypeError. That reads like a bug in the route. It is not — it is a
+    // stale build artefact, and the log should say so and say how to fix it.
+    //
+    // The scripts now regenerate on `npm install` and before `npm run dev`, so
+    // this should not recur; this makes it obvious if it ever does.
+    if (isStalePrismaClient(err)) {
+      console.error(
+        "[prisma client out of date] A model in schema.prisma is missing from the generated client. " +
+          "Run `npx prisma generate` (and `npx prisma migrate deploy` if the table is new), then restart the dev server."
+      );
+      return NextResponse.json(
+        {
+          error:
+            process.env.NODE_ENV === "production"
+              ? "Something went wrong"
+              : "The database client is out of date. Run `npx prisma generate` and restart the dev server."
+        },
+        { status: 503 }
+      );
     }
 
     console.error("[unhandled error]", err);

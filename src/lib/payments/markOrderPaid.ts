@@ -40,13 +40,20 @@ export async function markOrderPaid(orderId: string, paymentRef: string, verifie
     return { ok: false as const, reason: "Amount/currency mismatch — refusing to mark paid" };
   }
 
-  await prisma.order.update({
-    where: { id: orderId },
-    data: {
-      status: "PAID",
-      paymentRef,
-      statusHistory: { create: { status: "PAID", note: `Payment verified via ${paymentRef}` } }
-    }
+  // The claim is a conditional update, not the read above. Paystack's webhook
+  // and the customer's browser redirect routinely arrive within milliseconds
+  // of each other; with a read-then-write both saw PENDING, both marked the
+  // order PAID and both sent a receipt. Only the caller whose update actually
+  // moves the row out of PENDING carries on — the other stops here.
+  const claimed = await prisma.order.updateMany({
+    where: { id: orderId, status: "PENDING" },
+    data: { status: "PAID", paymentRef }
+  });
+  if (claimed.count === 0) {
+    return { ok: true as const, alreadyPaid: true };
+  }
+  await prisma.orderStatusEvent.create({
+    data: { orderId, status: "PAID", note: `Payment verified via ${paymentRef}` }
   });
 
   // The receipt goes out after the order is durably marked paid, and its

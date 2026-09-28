@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { formatPrice, Product } from "@/types/product";
 import { StatusPill } from "@/components/luxury";
 import { isLowStock } from "@/lib/inventory";
+import { releaseState, formatDropDate } from "@/lib/release";
 
 type Row = Product & { isPublished?: boolean };
 
@@ -105,6 +106,7 @@ export default function ProductsTable({ products }: { products: Row[] }) {
                 <tr key={product.id} className="transition-colors hover:bg-soft-50">
                   <th scope="row" className="px-5 py-4 text-left font-medium text-soft-800">
                     {product.name}
+                    <DropNote product={product} />
                   </th>
                   <td className="text-soft-500">{product.category.name}</td>
                   <td className="tabular-nums text-soft-600">
@@ -158,5 +160,18 @@ function Status({ published }: { published: boolean }) {
       status={published ? "PUBLISHED" : "DRAFT"}
       label={published ? "Published" : "Draft"}
     />
+  );
+}
+
+/** Under the name, when a product is on a timed drop — so a hidden product in the list is explained. */
+function DropNote({ product }: { product: Row }) {
+  const state = releaseState(product);
+  if (state === "open") return null;
+  return (
+    <span className="mt-1 block text-xs font-normal text-gold">
+      {state === "early" ? "VIP early access · " : "Scheduled · "}
+      opens {formatDropDate(product.releaseAt)}
+      {state === "upcoming" && product.earlyAccessAt && ` (VIP ${formatDropDate(product.earlyAccessAt)})`}
+    </span>
   );
 }

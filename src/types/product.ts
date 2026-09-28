@@ -55,6 +55,9 @@ export type Product = {
   variants: ProductVariant[];
   /** Present on records read from the database; drives the "New" badge. */
   createdAt?: Date | string;
+  /** Drop timing — see src/lib/release.ts. Absent or null means already open. */
+  releaseAt?: Date | string | null;
+  earlyAccessAt?: Date | string | null;
 };
 
 /**

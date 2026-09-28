@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import Link from "next/link";
-import BrandMark from "@/components/BrandMark";
 
 export default function SignupPage() {
-  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,32 +22,32 @@ export default function SignupPage() {
       body: JSON.stringify({ name, email, password })
     });
 
-    setLoading(false);
-
     if (!res.ok) {
+      setLoading(false);
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "Something went wrong");
       return;
     }
 
-    router.push("/login");
+    // Signed straight in. Sending someone who has just chosen a password to a
+    // login form to type it again is a step that loses people — and it was
+    // how the account page's VIP and photo features went unfound.
+    const signedIn = await signIn("credentials", { email, password, redirect: false });
+    if (signedIn?.error) {
+      window.location.assign("/login");
+      return;
+    }
+    window.location.assign("/account");
   }
 
   return (
-    <div className="signup-page mx-auto max-w-sm py-16 sm:py-24">
-      <div className="text-center">
-        <BrandMark href={null} className="text-[15px]" />
-        <p className="type-micro mt-8 text-soft-400">Vinx / Account</p>
-        <h1 className="type-display mt-4 text-3xl text-soft-800">Create your account</h1>
-        <p className="mx-auto mt-4 max-w-xs text-sm leading-relaxed text-soft-500">
-          Save your details and keep your Vinx pieces close.
-        </p>
-      </div>
+    <div className="mx-auto max-w-xs py-20 sm:py-28">
+      <h1 className="text-center">Create account</h1>
 
       <form onSubmit={handleSubmit} className="mt-12">
         <div className="space-y-7">
           <div>
-            <label className="type-micro mb-2 block text-soft-400" htmlFor="signup-name">
+            <label className="field-label" htmlFor="signup-name">
               Full name
             </label>
             <input
@@ -64,7 +62,7 @@ export default function SignupPage() {
           </div>
 
           <div>
-            <label className="type-micro mb-2 block text-soft-400" htmlFor="signup-email">
+            <label className="field-label" htmlFor="signup-email">
               Email
             </label>
             <input
@@ -79,7 +77,7 @@ export default function SignupPage() {
           </div>
 
           <div>
-            <label className="type-micro mb-2 block text-soft-400" htmlFor="signup-password">
+            <label className="field-label" htmlFor="signup-password">
               Password
             </label>
             <input
@@ -99,7 +97,7 @@ export default function SignupPage() {
         </div>
 
         {error && (
-          <p role="alert" className="mt-6 border-l-2 border-vienna-red pl-3 text-sm text-vienna-red">
+          <p role="alert" className="type-micro mt-6 text-[var(--error)]">
             {error}
           </p>
         )}
@@ -113,9 +111,9 @@ export default function SignupPage() {
         </p>
       </form>
 
-      <p className="mt-10 text-center text-sm text-soft-500">
+      <p className="type-micro mt-10 text-center text-[var(--muted)]">
         Already have an account?{" "}
-        <Link href="/login" className="text-soft-800 underline underline-offset-4 transition-opacity hover:opacity-50">
+        <Link href="/login" className="text-black underline underline-offset-4 transition-opacity hover:opacity-50">
           Log in
         </Link>
       </p>

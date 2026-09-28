@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { releaseState } from "@/lib/release";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -13,7 +14,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     }
   });
 
-  if (!product) {
+  // An unopened drop reads exactly like a missing product: the same 404, so the
+  // response does not confirm that something is coming at this slug.
+  if (!product || releaseState(product) === "upcoming") {
     return NextResponse.json({ error: "Product not found" }, { status: 404 });
   }
 

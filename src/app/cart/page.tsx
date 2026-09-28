@@ -4,145 +4,114 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import { formatPrice } from "@/types/product";
-import { Heading, Kicker } from "@/components/luxury";
 
+/**
+ * The bag: the pieces, a total, and one button.
+ *
+ * Removed: a kicker and a headline ("Your selection."), a two-column layout with
+ * a sticky "Summary" sidebar, a subtotal row with its own rule, a line of small
+ * print, a second "Continue shopping" link, and a boxed quantity stepper. The
+ * total and the button now sit directly under the list, where the eye already
+ * is when it reaches the last item.
+ */
 export default function CartPage() {
   const { items, removeItem, updateQuantity, totalPrice } = useCart();
   const currency = items[0]?.currency ?? "GHS";
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto max-w-lg py-24 text-center sm:py-32">
-        <Kicker>Bag</Kicker>
-        <Heading level={1} size={2} className="mt-5">
-          Your bag is empty.
-        </Heading>
-        <p className="mt-5 text-sm text-soft-500">There are no pieces here yet.</p>
-        <Link href="/products" className="btn-primary mt-10">
-          Continue shopping
+      <div className="flex flex-col items-center py-40 text-center">
+        <h1>Bag</h1>
+        <p className="type-label mt-3 text-[var(--muted)]">Empty.</p>
+        <Link href="/" className="btn-quiet mt-10">
+          Shop
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-6xl pb-24 lg:pb-0">
-      <header className="border-b border-soft-200 pb-6">
-        <Kicker>Bag</Kicker>
-        <Heading level={1} size={2} className="mt-4">
-          Your selection.
-        </Heading>
-      </header>
+    <div className="mx-auto max-w-2xl pb-28 pt-10 sm:pb-0">
+      <h1 className="text-center">Bag</h1>
 
-      <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-16">
-        {/* Items — separated by hairlines rather than boxed as cards, so the
-            page reads as one list instead of a stack of panels. */}
-        <ul className="divide-y divide-soft-200">
-          {items.map((item) => (
-            <li key={item.variantId} className="flex gap-5 py-7">
+      <ul className="mt-12">
+        {items.map((item) => (
+          <li key={item.variantId} className="flex items-center gap-5 py-5">
+            <Link href={`/products/${item.productSlug}`} className="relative h-24 w-20 shrink-0">
+              {item.frontImageUrl && (
+                <Image src={item.frontImageUrl} alt="" fill sizes="80px" className="object-contain" />
+              )}
+            </Link>
+
+            <div className="min-w-0 flex-1">
               <Link
                 href={`/products/${item.productSlug}`}
-                className="relative h-32 w-24 shrink-0 overflow-hidden bg-soft-100 sm:h-40 sm:w-32"
+                className="type-label block truncate transition-opacity hover:opacity-50"
               >
-                {item.frontImageUrl ? (
-                  <Image
-                    src={item.frontImageUrl}
-                    alt={item.name}
-                    fill
-                    sizes="128px"
-                    className="object-contain p-2"
-                  />
-                ) : (
-                  <span className="type-micro flex h-full items-center justify-center text-soft-400">
-                    Vinx
-                  </span>
-                )}
+                {item.name}
               </Link>
+              <p className="type-micro mt-1 text-[var(--muted)]">
+                {item.size} / {item.color}
+              </p>
 
-              <div className="flex min-w-0 flex-1 flex-col justify-between">
-                <div className="flex justify-between gap-4">
-                  <div className="min-w-0">
-                    <Link
-                      href={`/products/${item.productSlug}`}
-                      className="block truncate text-sm text-soft-800 transition-opacity hover:opacity-60"
-                    >
-                      {item.name}
-                    </Link>
-                    <p className="type-micro mt-2 text-soft-400">
-                      {item.size} — {item.color}
-                    </p>
-                  </div>
-                  <p className="shrink-0 text-sm tabular-nums text-soft-800">
-                    {formatPrice(item.price * item.quantity, item.currency)}
-                  </p>
-                </div>
-
-                <div className="mt-6 flex items-center justify-between gap-4">
-                  <div className="flex items-center border border-soft-200">
-                    <button
-                      type="button"
-                      aria-label={`Decrease quantity of ${item.name}`}
-                      onClick={() => updateQuantity(item.variantId, item.quantity - 1)}
-                      className="px-3 py-2 text-soft-500 transition-colors hover:text-soft-800"
-                    >
-                      −
-                    </button>
-                    <span className="min-w-10 border-x border-soft-200 px-2 py-2 text-center text-xs tabular-nums text-soft-800">
-                      {item.quantity}
-                    </span>
-                    <button
-                      type="button"
-                      aria-label={`Increase quantity of ${item.name}`}
-                      onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
-                      disabled={item.quantity >= item.maxQuantity}
-                      className="px-3 py-2 text-soft-500 transition-colors hover:text-soft-800 disabled:opacity-25"
-                    >
-                      +
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => removeItem(item.variantId)}
-                    className="type-micro text-soft-400 transition-colors hover:text-soft-800"
-                  >
-                    Remove
-                  </button>
-                </div>
+              {/* Quantity as three plain glyphs. No box: the numbers are the
+                  control, and the buttons around them are 32px targets. */}
+              <div className="mt-2 flex items-center">
+                <button
+                  type="button"
+                  aria-label={`Decrease quantity of ${item.name}`}
+                  onClick={() => updateQuantity(item.variantId, item.quantity - 1)}
+                  className="-ml-2 flex h-8 w-8 items-center justify-center transition-opacity hover:opacity-40"
+                >
+                  −
+                </button>
+                <span className="type-label w-5 text-center tabular-nums" aria-live="polite">
+                  {item.quantity}
+                </span>
+                <button
+                  type="button"
+                  aria-label={`Increase quantity of ${item.name}`}
+                  onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
+                  disabled={item.quantity >= item.maxQuantity}
+                  className="flex h-8 w-8 items-center justify-center transition-opacity hover:opacity-40 disabled:opacity-20"
+                >
+                  +
+                </button>
               </div>
-            </li>
-          ))}
-        </ul>
+            </div>
 
-        <aside className="h-fit border-t border-soft-200 pt-7 lg:sticky lg:top-28 lg:border-t-0">
-          <Kicker>Summary</Kicker>
+            <div className="flex shrink-0 flex-col items-end gap-2">
+              <p className="type-label tabular-nums">{formatPrice(item.price * item.quantity, item.currency)}</p>
+              <button
+                type="button"
+                onClick={() => removeItem(item.variantId)}
+                aria-label={`Remove ${item.name}`}
+                className="type-micro text-[var(--muted)] transition-colors hover:text-black"
+              >
+                Remove
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
 
-          <div className="mt-6 flex items-center justify-between border-b border-soft-200 pb-4">
-            <span className="text-sm text-soft-500">Subtotal</span>
-            <span className="text-sm tabular-nums text-soft-800">{formatPrice(totalPrice, currency)}</span>
-          </div>
-
-          <p className="mt-4 text-xs leading-relaxed text-soft-400">
-            Shipping and final payment details are confirmed at checkout.
-          </p>
-
-          <Link href="/checkout" className="btn-primary mt-8 w-full">
-            Continue to checkout
-          </Link>
-          <Link
-            href="/products"
-            className="type-micro mt-5 block text-center text-soft-500 transition-colors hover:text-soft-800"
-          >
-            Continue shopping
-          </Link>
-        </aside>
+      <div className="mt-8 flex items-center justify-between border-t border-black/10 pt-6">
+        <span className="type-label">Total</span>
+        <span className="type-label tabular-nums">{formatPrice(totalPrice, currency)}</span>
       </div>
+      {/* Honest about what the total is: the server recalculates the charge
+          and delivery is added at checkout. */}
+      <p className="type-micro mt-2 text-right text-[var(--muted)]">Delivery at checkout</p>
 
-      {/* Mobile checkout bar. Hidden on large screens where the summary column
-          is already visible and sticky. */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-soft-200 bg-white p-4 lg:hidden">
+      <Link href="/checkout" className="btn-primary mt-10 hidden w-full sm:flex">
+        Checkout
+      </Link>
+
+      {/* On a phone the button is pinned to the bottom of the screen, so it is
+          reachable without scrolling past a long bag. */}
+      <div className="fixed inset-x-0 bottom-0 z-30 bg-white px-[var(--gutter)] py-4 sm:hidden">
         <Link href="/checkout" className="btn-primary w-full">
-          Checkout — {formatPrice(totalPrice, currency)}
+          Checkout · {formatPrice(totalPrice, currency)}
         </Link>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
 import { verifyTransaction } from "@/lib/payments/paystack";
 import { markOrderPaid } from "@/lib/payments/markOrderPaid";
+import { markVipPaid } from "@/lib/payments/markVipPaid";
 
 // This is the endpoint Paystack itself calls — configure it in the Paystack
 // dashboard. It's the most reliable confirmation path, since it doesn't
@@ -30,6 +31,22 @@ export async function POST(req: NextRequest) {
   if (event.event === "charge.success") {
     const reference = event.data?.reference;
     const orderId = event.data?.metadata?.orderId;
+    const vipPurchaseId = event.data?.metadata?.vipPurchaseId;
+
+    // A VIP membership payment. Same discipline as orders: the signed payload
+    // says which purchase, Paystack's verify endpoint says whether and for how
+    // much, and markVipPaid applies it at most once.
+    if (reference && typeof vipPurchaseId === "string") {
+      try {
+        const verified = await verifyTransaction(reference);
+        if (verified.status === "success") {
+          await markVipPaid(vipPurchaseId, verified.reference, verified.amount, verified.currency);
+        }
+      } catch (err) {
+        console.error("[paystack webhook] VIP re-verify failed", err);
+        return NextResponse.json({ error: "Verification failed" }, { status: 502 });
+      }
+    }
 
     if (reference && orderId) {
       // Even though the webhook payload is now signature-verified, we still

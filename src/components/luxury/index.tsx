@@ -80,56 +80,9 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
 // Layout
 // ---------------------------------------------------------------------------
 
-/**
- * A vertical rhythm block. The app's root layout already provides the page
- * gutter and max width, so this only owns spacing between major sections.
- *
- * The gap is the `--section-gap` token rather than a pair of padding utilities,
- * so every section on the site breathes by the same amount and changing that
- * amount is one edit. Airiness is most of what separates a storefront that looks
- * considered from one that looks cramped, and it only reads as intentional when
- * it is consistent.
- */
-export function Section({
-  children,
-  className = "",
-  as: Tag = "section"
-}: {
-  children: React.ReactNode;
-  className?: string;
-  as?: React.ElementType;
-}) {
-  return <Tag className={`section-gap ${className}`}>{children}</Tag>;
-}
-
-/**
- * The eyebrow + heading + trailing-link row that opens almost every section.
- *
- * Extracted because it appeared three times on the homepage alone, each time
- * with slightly different spacing and a slightly different rule beneath it —
- * which is exactly how a page stops looking designed.
- */
-export function SectionHeader({
-  kicker,
-  title,
-  action,
-  className = ""
-}: {
-  kicker: string;
-  title: string;
-  action?: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={`flex items-end justify-between gap-6 border-b border-soft-200 pb-5 ${className}`}>
-      <div>
-        <Kicker>{kicker}</Kicker>
-        <h2 className="type-d3 mt-3 text-soft-800">{title}</h2>
-      </div>
-      {action && <div className="shrink-0 pb-1">{action}</div>}
-    </div>
-  );
-}
+// `Section` and `SectionHeader` were removed with the homepage sections that
+// used them: nothing on the storefront has an eyebrow-headline-link header any
+// more, and a helper with no callers is an invitation to bring one back.
 
 /**
  * Responsive product grid. Columns are the desktop maximum; it steps down.
@@ -143,20 +96,28 @@ export function SectionHeader({
  */
 export function ProductGrid({
   children,
-  columns = 4,
+  columns = 6,
   className = ""
 }: {
   children: React.ReactNode;
-  columns?: 2 | 3 | 4;
+  /** The widest the grid gets; it steps down to two on a phone. */
+  columns?: 2 | 3 | 4 | 6;
   className?: string;
 }) {
   const cols = {
-    2: "grid-cols-1 sm:grid-cols-2",
-    3: "grid-cols-2 sm:grid-cols-3",
-    4: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"
+    2: "grid-cols-2",
+    3: "grid-cols-2 md:grid-cols-3",
+    4: "grid-cols-2 md:grid-cols-3 lg:grid-cols-4",
+    // Six across on a wide screen, like the reference. With each garment small
+    // and centred in its cell, six columns reads as a calm field of objects
+    // rather than a crowded shelf — the air is inside the cells.
+    6: "grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
   }[columns];
 
-  return <div className={`grid gap-x-1.5 gap-y-14 sm:gap-x-2 ${cols} ${className}`}>{children}</div>;
+  // No horizontal gap: the cells' own inset provides the separation, and a
+  // gutter on top of it would double the space between garments without
+  // adding any above or below them.
+  return <div className={`grid gap-y-10 sm:gap-y-14 ${cols} ${className}`}>{children}</div>;
 }
 
 // ---------------------------------------------------------------------------
@@ -426,14 +387,14 @@ export function Skeleton({ className = "" }: { className?: string }) {
 }
 
 /** Matches ProductCard's footprint so the grid doesn't reflow when data lands. */
+/** Mirrors ProductCard: a square cell with a small inset block, one line. */
 export function ProductCardSkeleton() {
   return (
     <div>
-      <Skeleton className="aspect-[3/4] w-full" />
-      <div className="mt-3 flex items-baseline justify-between gap-2">
-        <Skeleton className="h-3.5 w-2/3" />
-        <Skeleton className="h-3.5 w-12" />
+      <div className="aspect-square zoom-tile">
+        <Skeleton className="h-full w-full" />
       </div>
+      <Skeleton className="mx-auto mt-3 h-3 w-1/2" />
     </div>
   );
 }
@@ -443,128 +404,158 @@ export function ProductCardSkeleton() {
 // ---------------------------------------------------------------------------
 
 /**
- * Product media viewer. Takes the ordered `MediaSlot[]` from `productMedia()`
- * so images and video share one index — the selected thumbnail is always the
- * thing on the stage, whether it's a photo or a clip.
+ * Product media viewer: one image, centred, with arrows at the edges and dots
+ * beneath. No thumbnail strip — a row of small framed copies of the photograph
+ * is the loudest thing on a page that is meant to hold one object.
+ *
+ * Takes the ordered `MediaSlot[]` from `productMedia()`, so photographs, the
+ * model shot and the clip share one index.
+ *
+ * Moves by arrow buttons, keyboard arrows while the gallery has focus, dots, or
+ * a horizontal swipe. It wraps: past the last slot is the first, because on a
+ * gallery of three a dead end is friction for no gain.
  */
 export function ImageGallery({
   media,
   priority = false,
   className = "",
-  fit = "cover"
+  fit = "contain"
 }: {
   media: MediaSlot[];
   priority?: boolean;
   className?: string;
-  /**
-   * How the stage image sits in its frame.
-   *
-   * `cover` is the default and fixes a visible inconsistency: the product grid
-   * shows real photography edge to edge (ProductCard switches to `object-cover`
-   * whenever it is not rendering a mockup), so a shopper who clicked a
-   * full-bleed tile used to land on the same photograph shrunk inside a warm
-   * border. The two surfaces now frame a photograph the same way.
-   *
-   * `contain` stays available for cut-out mockups, where cropping would slice
-   * the garment rather than the background around it.
-   */
   fit?: "cover" | "contain";
 }) {
   const [active, setActive] = React.useState(0);
+  const swipeStart = React.useRef<number | null>(null);
 
-  // Media can change when the viewer navigates between products without a
-  // full remount; clamp rather than pointing at a slot that no longer exists.
+  // Media can change when navigating between products without a remount;
+  // clamp rather than pointing at a slot that no longer exists.
   React.useEffect(() => {
     setActive((current) => (current < media.length ? current : 0));
   }, [media]);
 
   if (media.length === 0) return null;
-  const current = media[active] ?? media[0];
-  const hasCaptions = media.some((slot) => Boolean(slot.caption));
 
-  // Padding only belongs with `contain`. With `cover` it would inset the image
-  // and let the ground show as a frame, which is the thing this is fixing.
-  const fitClass = fit === "cover" ? "object-cover" : "object-contain p-5 sm:p-12";
+  const count = media.length;
+  const current = media[active] ?? media[0];
+  const multiple = count > 1;
+  const go = (step: number) => setActive((index) => (index + step + count) % count);
+  const fitClass = fit === "cover" ? "object-cover" : "object-contain zoom-stage";
 
   return (
-    <div className={className}>
-      <div className="product-stage relative aspect-[3/4]">
-        {current.kind === "video" ? (
-          <video
-            key={current.src}
-            src={current.src}
-            poster={current.poster}
-            autoPlay
-            muted
-            loop
-            playsInline
-            controls={false}
-            aria-label={current.alt}
-            className={`absolute inset-0 h-full w-full ${fitClass}`}
-          />
-        ) : (
-          <Image
-            src={current.src}
-            alt={current.alt}
-            fill
-            priority={priority}
-            sizes="(max-width: 768px) 100vw, 50vw"
-            className={`${fitClass} transition-opacity duration-500 ease-apple`}
-          />
+    <div
+      className={className}
+      role="region"
+      aria-roledescription="carousel"
+      aria-label="Product images"
+      // Focusable so the arrow keys work once a keyboard user has tabbed here,
+      // without hijacking the arrow keys for the whole page.
+      tabIndex={multiple ? 0 : undefined}
+      onKeyDown={(event) => {
+        if (!multiple) return;
+        if (event.key === "ArrowRight") go(1);
+        if (event.key === "ArrowLeft") go(-1);
+      }}
+    >
+      <div
+        className="relative h-[58svh] min-h-[320px] max-h-[760px] touch-pan-y select-none"
+        onPointerDown={(event) => {
+          swipeStart.current = event.clientX;
+        }}
+        onPointerUp={(event) => {
+          if (swipeStart.current === null || !multiple) return;
+          const delta = event.clientX - swipeStart.current;
+          swipeStart.current = null;
+          // 40px: enough that a tap is never read as a swipe.
+          if (Math.abs(delta) > 40) go(delta < 0 ? 1 : -1);
+        }}
+      >
+        {/* Keyed on the source, so each change remounts and fades in. Only the
+            visible slot is rendered — stacking every slot to crossfade would
+            download every image up front. */}
+        <div key={current.src} className="page-enter absolute inset-0">
+          {current.kind === "video" ? (
+            <video
+              src={current.src}
+              poster={current.poster}
+              autoPlay
+              muted
+              loop
+              playsInline
+              aria-label={current.alt}
+              className={`absolute inset-0 h-full w-full ${fitClass}`}
+            />
+          ) : (
+            <Image
+              src={current.src}
+              alt={current.alt}
+              fill
+              priority={priority && active === 0}
+              sizes="(max-width: 768px) 100vw, 60vw"
+              className={fitClass}
+              draggable={false}
+            />
+          )}
+        </div>
+
+        {multiple && (
+          <>
+            <GalleryArrow direction="previous" onClick={() => go(-1)} />
+            <GalleryArrow direction="next" onClick={() => go(1)} />
+          </>
         )}
       </div>
 
-      {/* Only a model shot carries a caption, and it says who is wearing the
-          piece and at what size.
-
-          Rendered whenever ANY slot has one, not only the active slot, so that
-          moving between a model shot and a flat shot leaves the thumbnails
-          where they are instead of shifting them by a line. Skipped entirely
-          when no slot has a caption, so a product with no model view gets no
-          reserved dead space under its gallery.
-
-          `aria-live` because the text changes while the page around it does
-          not, and a screen reader would otherwise never hear that it had. */}
-      {hasCaptions && (
-        <p aria-live="polite" className="mt-3 min-h-[1.25rem] text-xs uppercase tracking-[0.12em] text-soft-400">
-          {current.caption ?? ""}
-        </p>
-      )}
-
-      {media.length > 1 && (
-        <div className={`${hasCaptions ? "mt-2" : "mt-3"} flex gap-2 overflow-x-auto pb-1`}>
+      {multiple && (
+        <div className="mt-4 flex justify-center gap-2">
           {media.map((slot, index) => (
             <button
               key={`${slot.kind}-${slot.src}`}
               type="button"
               onClick={() => setActive(index)}
-              aria-label={slot.alt}
+              aria-label={`Show image ${index + 1} of ${count}`}
               aria-current={index === active}
-              className={`relative h-16 w-14 shrink-0 overflow-hidden border bg-white transition-colors duration-300 sm:h-20 sm:w-16 ${
-                index === active ? "border-soft-700" : "border-soft-200 hover:border-soft-400"
-              }`}
+              // The visible dot is 4px; the button around it is 20px, because a
+              // 4px target is not something a thumb can hit.
+              className="flex h-5 w-5 items-center justify-center"
             >
-              <Image
-                src={slot.kind === "video" ? slot.poster : slot.src}
-                alt=""
-                fill
-                sizes="64px"
-                // Matched to the stage. A thumbnail framed differently from the
-                // image it selects makes the strip look like a different set of
-                // photographs.
-                className={fit === "cover" ? "object-cover" : "object-contain p-1.5"}
+              <span
+                className={`block h-1 w-1 rounded-full transition-colors duration-300 ${
+                  index === active ? "bg-black" : "bg-black/20"
+                }`}
               />
-              {slot.kind === "video" && (
-                <span className="absolute inset-0 flex items-center justify-center bg-black/25">
-                  <svg viewBox="0 0 24 24" className="h-5 w-5 fill-white" aria-hidden>
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                </span>
-              )}
             </button>
           ))}
         </div>
       )}
+
+      {/* The model shot's caption — who is wearing it, how tall, what size.
+          Only reserved when some slot has one, so products without a model
+          view carry no empty line. */}
+      {media.some((slot) => slot.caption) && (
+        <p aria-live="polite" className="type-micro mt-2 min-h-[1rem] text-center text-[var(--muted)]">
+          {current.caption ?? ""}
+        </p>
+      )}
     </div>
+  );
+}
+
+function GalleryArrow({ direction, onClick }: { direction: "previous" | "next"; onClick: () => void }) {
+  const next = direction === "next";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={next ? "Next image" : "Previous image"}
+      className={`absolute top-1/2 -translate-y-1/2 p-3 transition-opacity hover:opacity-40 ${
+        next ? "right-0 sm:right-[6%]" : "left-0 sm:left-[6%]"
+      }`}
+    >
+      <svg width="9" height="16" viewBox="0 0 9 16" fill="none" aria-hidden className={next ? "" : "rotate-180"}>
+        <path d="M1 1l7 7-7 7" stroke="currentColor" strokeWidth="1.3" />
+      </svg>
+    </button>
   );
 }

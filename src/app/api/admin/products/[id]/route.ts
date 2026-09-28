@@ -51,13 +51,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           currency: data.currency, categoryId: category.id, frontImageUrl: data.frontImageUrl,
           backImageUrl: data.backImageUrl, hoverVideoUrl: data.hoverVideoUrl ?? null,
           galleryImages: data.galleryImages, isPublished: data.isPublished,
+          releaseAt: data.releaseAt, earlyAccessAt: data.earlyAccessAt,
           variants: { create: data.variants.map((variant) => ({ ...variant, inStock: variant.quantity > 0 })) },
           modelShots: { create: shotRows(data.modelShots) }
         },
         include: { variants: true, modelShots: { include: { model: true } } }
       });
     });
-    await logAdminAction(admin.session.user!.id!, "product.update", "Product", id, { name: product.name, isPublished: product.isPublished });
+    await logAdminAction(admin.session.user!.id!, "product.update", "Product", id, {
+      name: product.name,
+      isPublished: product.isPublished,
+      // Drop dates are logged because moving one changes who can buy what and
+      // when — the kind of change someone will later need to account for.
+      releaseAt: product.releaseAt,
+      earlyAccessAt: product.earlyAccessAt
+    });
     return NextResponse.json({ product });
   });
 }

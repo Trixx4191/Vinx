@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/types/product";
 import PayButton from "@/components/PayButton";
 import { isAdminRole } from "@/lib/roles";
-import { Heading, Kicker } from "@/components/luxury";
+import { Kicker } from "@/components/luxury";
 import OrderTimeline from "./OrderTimeline";
 
 export default async function OrderDetailPage({
@@ -58,23 +58,20 @@ export default async function OrderDetailPage({
         </p>
       )}
       {hasFailed && (
-        <p className="mb-10 border-l-2 border-vienna-red pl-4 text-sm text-soft-600">
+        <p className="type-micro mb-10 text-center text-[var(--error)]">
           This order could not be completed. Please return to your bag and try again.
         </p>
       )}
 
-      <header className="border-b border-soft-200 pb-6">
-        <Kicker>Order</Kicker>
-        <Heading level={1} size={2} className="mt-4">
-          {isPaid ? "Order confirmed." : hasFailed ? "Order incomplete." : "Order placed."}
-        </Heading>
-        <p className="type-micro mt-4 text-soft-400">Reference — {order.id}</p>
+      <header className="pt-10 text-center">
+        <h1>{isPaid ? "Order confirmed" : hasFailed ? "Order incomplete" : "Order placed"}</h1>
+        <p className="type-micro mt-2 text-[var(--muted)]">{order.id}</p>
       </header>
 
       {isPending && (
-        <section className="mt-10 border border-soft-300 p-6 sm:p-8">
+        <section className="mt-14 text-center">
           <Kicker>Payment outstanding</Kicker>
-          <p className="mt-4 max-w-md text-sm leading-relaxed text-soft-500">
+          <p className="type-body mx-auto mt-3 max-w-md">
             Your pieces are reserved while this order is pending. Complete payment to confirm it.
           </p>
           <div className="mt-6">

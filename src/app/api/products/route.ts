@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { visibleReleaseWhere } from "@/lib/release";
 
 export async function GET(req: NextRequest) {
   const category = req.nextUrl.searchParams.get("category");
@@ -8,6 +9,10 @@ export async function GET(req: NextRequest) {
     prisma.product.findMany({
     where: {
       isPublished: true,
+      // A public endpoint: drops that have not opened must not be readable
+      // here any more than in the catalog, or the API becomes a way to see
+      // unreleased pieces before anyone — VIP included — is meant to.
+      AND: [visibleReleaseWhere()],
       ...(category ? { category: { slug: category } } : {})
     },
     include: {

@@ -49,9 +49,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // The version bump signs out every session — this one included. That is
+    // the point of changing a password after a suspected leak: a session opened
+    // with the old password must not survive the change. Keeping *this*
+    // session alive would need a way to re-issue its token that a stolen
+    // session could not also use, and "sign in again with your new password"
+    // is both simpler and what people expect.
     await prisma.user.update({
       where: { id: userId },
-      data: { passwordHash: await bcrypt.hash(newPassword, 12) }
+      data: { passwordHash: await bcrypt.hash(newPassword, 12), sessionVersion: { increment: 1 } }
     });
 
     // An admin changing their own credential belongs in the audit trail; a
@@ -61,10 +67,6 @@ export async function POST(req: NextRequest) {
       await logAdminAction(userId, "account.password_change", "User", userId);
     }
 
-    // The session stays valid on purpose. NextAuth's JWT does not carry the
-    // password hash, so it is not invalidated by this change — signing every
-    // device out would need a token version on the user record, which is worth
-    // doing but is a larger change than this one.
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, signedOut: true });
   });
 }

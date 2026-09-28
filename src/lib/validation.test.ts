@@ -4,10 +4,14 @@ import {
   checkoutSchema,
   createProductSchema,
   modelSchema,
+  subscribeSchema,
+  siteSettingsSchema,
   MAX_MODEL_SHOTS,
   createStaffSchema,
   updateStaffRoleSchema,
-  passwordSchema
+  passwordSchema,
+  vipCheckoutSchema,
+  vipGrantSchema
 } from "@/lib/validation";
 
 const validAddress = {
@@ -452,5 +456,166 @@ describe("createProductSchema — model shots", () => {
     if (parsed.success) {
       assert.equal("sortOrder" in parsed.data.modelShots[0], false);
     }
+  });
+});
+
+describe("subscribeSchema", () => {
+  it("accepts a plain address and defaults the source", () => {
+    const parsed = subscribeSchema.safeParse({ email: "ama@example.com" });
+    assert.equal(parsed.success, true);
+    if (parsed.success) assert.equal(parsed.data.source, "popup");
+  });
+
+  /**
+   * Stored lower-cased and trimmed, because the column is unique. Without
+   * normalising, "Ama@example.com" and "ama@example.com" are two rows, and the
+   * upsert that is meant to make a repeat sign-up idempotent stops working.
+   */
+  it("normalises the address so the unique index actually dedupes", () => {
+    const parsed = subscribeSchema.safeParse({ email: "  AMA@Example.COM " });
+    assert.equal(parsed.success, true);
+    if (parsed.success) assert.equal(parsed.data.email, "ama@example.com");
+  });
+
+  it("rejects anything that is not an address", () => {
+    for (const bad of ["", "ama", "ama@", "@example.com", "ama example.com"]) {
+      assert.equal(
+        subscribeSchema.safeParse({ email: bad }).success,
+        false,
+        `${JSON.stringify(bad)} should be rejected`
+      );
+    }
+  });
+
+  /**
+   * `source` reaches a public, unauthenticated endpoint. An open string field
+   * there is an invitation to write arbitrary content into the database, so it
+   * is constrained to the surfaces that actually exist.
+   */
+  it("refuses a source it does not know", () => {
+    assert.equal(subscribeSchema.safeParse({ email: "a@b.com", source: "footer" }).success, true);
+    assert.equal(subscribeSchema.safeParse({ email: "a@b.com", source: "<script>" }).success, false);
+    assert.equal(subscribeSchema.safeParse({ email: "a@b.com", source: "anything" }).success, false);
+  });
+});
+
+describe("siteSettingsSchema", () => {
+  it("accepts a hero image URL, including a local upload path", () => {
+    assert.equal(siteSettingsSchema.safeParse({ heroImageUrl: "https://cdn.vinx.com/hero.png" }).success, true);
+    assert.equal(
+      siteSettingsSchema.safeParse({ heroImageUrl: "/uploads/products/3f2a1b4c-5d6e-7f80-9a1b-2c3d4e5f6071.png" }).success,
+      true
+    );
+  });
+
+  // "" is how the admin removes the hero; the route turns it into a delete.
+  it("accepts an empty string as 'clear this setting'", () => {
+    const parsed = siteSettingsSchema.safeParse({ heroImageUrl: "" });
+    assert.equal(parsed.success, true);
+    if (parsed.success) assert.equal(parsed.data.heroImageUrl, "");
+  });
+
+  /**
+   * The hero URL is rendered on every visitor's homepage. It goes through the
+   * same guard as product imagery, so an admin session cannot point the front
+   * page at a traversal path or a script URL.
+   */
+  it("holds the hero to the same URL rules as product images", () => {
+    for (const bad of ["/uploads/../../etc/passwd", "javascript:alert(1)", "/etc/passwd", "not a url"]) {
+      assert.equal(siteSettingsSchema.safeParse({ heroImageUrl: bad }).success, false, `${bad} should be rejected`);
+    }
+  });
+
+  /**
+   * The table is key/value. If the schema passed unknown keys through, any
+   * admin request could write arbitrary rows into it.
+   */
+  it("drops keys it does not know", () => {
+    const parsed = siteSettingsSchema.safeParse({ heroImageUrl: "", anything: "x", __proto__: "y" });
+    assert.equal(parsed.success, true);
+    if (parsed.success) assert.deepEqual(Object.keys(parsed.data), ["heroImageUrl"]);
+  });
+});
+
+describe("createProductSchema — drop timing", () => {
+  const base = {
+    name: "Classic Tee",
+    description: "A tee.",
+    material: "Cotton",
+    price: 12000,
+    categorySlug: "t-shirts",
+    frontImageUrl: "https://cdn.vinx.com/front.png",
+    backImageUrl: "https://cdn.vinx.com/back.png",
+    variants: [{ size: "M", color: "Black", sku: "SKU-1", quantity: 5 }]
+  };
+
+  // Every product saved before drops existed has neither field.
+  it("treats absent and empty dates as 'already open'", () => {
+    for (const extra of [{}, { releaseAt: "", earlyAccessAt: "" }, { releaseAt: null, earlyAccessAt: null }]) {
+      const parsed = createProductSchema.safeParse({ ...base, ...extra });
+      assert.equal(parsed.success, true, JSON.stringify(extra));
+      if (parsed.success) {
+        assert.equal(parsed.data.releaseAt, null);
+        assert.equal(parsed.data.earlyAccessAt, null);
+      }
+    }
+  });
+
+  it("accepts a drop with a VIP window leading into it", () => {
+    const parsed = createProductSchema.safeParse({
+      ...base,
+      earlyAccessAt: "2026-10-10T12:00:00.000Z",
+      releaseAt: "2026-10-12T12:00:00.000Z"
+    });
+    assert.equal(parsed.success, true);
+    if (parsed.success) assert.ok(parsed.data.releaseAt instanceof Date);
+  });
+
+  /**
+   * An early window at or after the drop would never apply — the product would
+   * go straight from hidden to open and VIPs would get nothing. Refusing it at
+   * save time is the only moment anyone would notice.
+   */
+  it("refuses an early window that does not start before the drop", () => {
+    for (const early of ["2026-10-12T12:00:00.000Z", "2026-10-13T00:00:00.000Z"]) {
+      const parsed = createProductSchema.safeParse({ ...base, earlyAccessAt: early, releaseAt: "2026-10-12T12:00:00.000Z" });
+      assert.equal(parsed.success, false, early);
+    }
+  });
+
+  it("refuses an early window with no drop to lead into", () => {
+    assert.equal(createProductSchema.safeParse({ ...base, earlyAccessAt: "2026-10-10T12:00:00.000Z" }).success, false);
+  });
+
+  // A wall-clock string with no timezone is ambiguous by hours; the form sends
+  // a full instant and anything else is refused.
+  it("refuses a date with no timezone", () => {
+    assert.equal(createProductSchema.safeParse({ ...base, releaseAt: "2026-10-12T12:00" }).success, false);
+  });
+});
+
+describe("vipCheckoutSchema", () => {
+  it("accepts only the sold plans", () => {
+    assert.ok(vipCheckoutSchema.safeParse({ plan: "MONTH" }).success);
+    assert.ok(vipCheckoutSchema.safeParse({ plan: "YEAR" }).success);
+    // COMP is admin-only; a customer must not be able to "buy" a free period.
+    assert.ok(!vipCheckoutSchema.safeParse({ plan: "COMP" }).success);
+    assert.ok(!vipCheckoutSchema.safeParse({}).success);
+  });
+});
+
+describe("vipGrantSchema", () => {
+  it("normalises the email", () => {
+    const parsed = vipGrantSchema.parse({ email: "  Ama@Example.COM ", days: 30 });
+    assert.equal(parsed.email, "ama@example.com");
+  });
+
+  it("accepts only the offered lengths", () => {
+    for (const days of [7, 30, 90, 365]) assert.ok(vipGrantSchema.safeParse({ email: "a@b.co", days }).success);
+    for (const days of [0, -30, 31, 3650, "30"]) assert.ok(!vipGrantSchema.safeParse({ email: "a@b.co", days }).success);
+  });
+
+  it("requires an email", () => {
+    assert.ok(!vipGrantSchema.safeParse({ email: "not-an-email", days: 30 }).success);
   });
 });

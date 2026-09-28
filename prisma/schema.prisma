@@ -42,6 +42,22 @@ model User {
   role              Role     @default(CUSTOMER)
   twoFactorSecret   String?  // only ever read/written server-side, never sent to the client
   twoFactorEnabled  Boolean  @default(false)
+  /// Every login token carries the value this had when it was issued. Bumping
+  /// it invalidates every existing session for this user at once — on a role
+  /// change, a password change, or "sign out of all devices". Without it a
+  /// JWT stays valid for its full 30 days no matter what changes here.
+  sessionVersion    Int      @default(0)
+  /// Profile photo, uploaded by the user. Optional.
+  avatarUrl         String?
+  /// VIP is a paid membership that runs until this moment. Active while it is
+  /// in the future; lapses on its own when it passes, with nothing to cancel.
+  /// Each paid period extends it from whichever is later: now, or the current
+  /// end — so renewing early never loses days.
+  vipUntil          DateTime?
+  /// Start of the current unbroken membership. Reset when a lapsed member
+  /// rejoins, so it always means "member continuously since".
+  vipSince          DateTime?
+  vipPurchases      VipPurchase[]
   orders            Order[]
   addresses         Address[]
   auditLogs         AdminAuditLog[]
@@ -103,12 +119,76 @@ model Product {
   // Defaults to empty so existing rows need no backfill.
   galleryImages String[]         @default([])
   isPublished   Boolean          @default(true)
+  /// When the product opens to everyone. Null means it is already open.
+  releaseAt     DateTime?
+  /// When VIP members can see and buy it, ahead of `releaseAt`. Null means no
+  /// early window: VIPs get it when everyone does.
+  earlyAccessAt DateTime?
   variants      ProductVariant[]
   // On-model photographs, uploaded by an admin. Absent means this product has
   // no model view, which is the admin's per-product choice.
   modelShots    ProductModelShot[]
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
+
+  @@index([releaseAt])
+}
+
+/// One paid VIP period. Created PENDING when checkout starts; flipped to PAID
+/// exactly once, after Paystack confirms the payment server-to-server, at which
+/// point the user's `vipUntil` is extended by `periodDays`.
+model VipPurchase {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  /// "MONTH" or "YEAR" — see src/lib/vip.ts.
+  plan        String
+  /// Minor units, snapshotted at checkout. What Paystack confirms must equal
+  /// this, or the purchase is refused — same rule as orders.
+  amount      Int
+  currency    String   @default("GHS")
+  periodDays  Int
+  status      String   @default("PENDING")
+  paymentRef  String?  @unique
+  /// The membership window this payment bought, recorded when it is applied.
+  periodStart DateTime?
+  periodEnd   DateTime?
+  createdAt   DateTime @default(now())
+  paidAt      DateTime?
+
+  @@index([userId, createdAt])
+}
+
+/// Storefront settings an admin changes without a deploy — at the moment, the
+/// homepage hero image.
+///
+/// Key/value rather than a column per setting, so the next one (a hero link, a
+/// seasonal message) is a new row and not a migration. Keys are validated
+/// against a fixed list in the API, so this cannot become a dumping ground for
+/// arbitrary client-supplied names.
+model SiteSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+/// Someone who asked to hear about new pieces.
+///
+/// A table rather than a form posting into nothing. A newsletter field that
+/// silently discards what it is given is worse than no field: the visitor
+/// believes they subscribed, and the shop believes it has a list.
+///
+/// Deliberately minimal — an address and where it came from. Nothing here is
+/// needed to run the shop, so there is nothing to lose if it is never used.
+model Subscriber {
+  id        String   @id @default(cuid())
+  /// Stored lower-cased and unique, so a repeat sign-up updates rather than
+  /// collecting the same person three times.
+  email     String   @unique
+  /// Which surface captured it — the pop-up, the footer, a future landing page.
+  /// Without this, a list gives no way to tell what is actually working.
+  source    String   @default("popup")
+  createdAt DateTime @default(now())
 }
 
 /// A person the catalog is shot on.

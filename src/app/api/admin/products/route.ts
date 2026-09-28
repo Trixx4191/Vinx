@@ -69,6 +69,8 @@ export async function POST(req: NextRequest) {
         hoverVideoUrl: data.hoverVideoUrl ?? null,
         galleryImages: data.galleryImages,
         isPublished: data.isPublished,
+        releaseAt: data.releaseAt,
+        earlyAccessAt: data.earlyAccessAt,
         variants: { create: data.variants },
         modelShots: { create: shotRows(data.modelShots) }
       },

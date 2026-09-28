@@ -1,39 +1,30 @@
-import Link from "next/link";
-
 /**
  * The shell every customer-service page sits in.
  *
- * One component rather than five nearly-identical pages, so the measure, the
- * heading treatment and the "still need help" footer are decided once. These
- * pages are the least glamorous part of a storefront and the first place a
- * design system falls apart, because nobody is looking at them.
+ * One component rather than five nearly-identical pages, so the measure and the
+ * heading treatment are decided once. A title, a paragraph, a few rows of
+ * facts. The "still need a hand? contact us" block that used to close every
+ * page is gone — Contact is in the footer and the menu on every page already.
  */
 export default function InfoPage({
-  kicker,
   title,
   intro,
   children
 }: {
-  kicker: string;
+  /** Kept for call-site compatibility; no longer rendered. */
+  kicker?: string;
   title: string;
   intro?: string;
   children: React.ReactNode;
 }) {
   return (
-    <article className="mx-auto max-w-2xl py-8 sm:py-16">
-      <p className="type-micro text-soft-400">{kicker}</p>
-      <h1 className="type-d2 mt-4 text-soft-800">{title}</h1>
+    <article className="mx-auto max-w-lg pb-10 pt-16 sm:pt-24">
+      {/* Titles are written with a trailing full stop at the call sites
+          ("Delivery."), which suited a display headline and reads as a typo in
+          small capitals. Stripped here rather than at five call sites. */}
+      <h1>{title.replace(/\.$/, "")}</h1>
       {intro && <p className="type-body mt-6">{intro}</p>}
-
-      {/* Sections are separated by space and a hairline, never boxed. */}
-      <div className="mt-12 space-y-10">{children}</div>
-
-      <div className="mt-16 border-t border-soft-200 pt-8">
-        <p className="type-micro text-soft-400">Still need a hand?</p>
-        <Link href="/contact" className="btn-quiet mt-4">
-          Contact us
-        </Link>
-      </div>
+      <div className="mt-14 space-y-12">{children}</div>
     </article>
   );
 }
@@ -42,7 +33,7 @@ export default function InfoPage({
 export function InfoSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="type-d3 text-soft-800">{title}</h2>
+      <h2>{title}</h2>
       <div className="type-body mt-3 space-y-3">{children}</div>
     </section>
   );
@@ -61,10 +52,10 @@ export function InfoRows({ rows }: { rows: Array<[string, string]> }) {
       {rows.map(([term, value]) => (
         <div
           key={term}
-          className="flex flex-wrap justify-between gap-x-6 gap-y-1 border-b border-soft-200 py-3 last:border-0"
+          className="flex flex-wrap justify-between gap-x-6 gap-y-1 py-2"
         >
-          <dt className="text-[13px] text-soft-800">{term}</dt>
-          <dd className="text-[13px] text-soft-500">{value}</dd>
+          <dt className="type-label">{term}</dt>
+          <dd className="type-label text-[var(--muted)]">{value}</dd>
         </div>
       ))}
     </dl>

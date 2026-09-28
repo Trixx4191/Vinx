@@ -17,6 +17,19 @@ export const signupSchema = z.object({
 
 export type SignupInput = z.infer<typeof signupSchema>;
 
+/**
+ * Newsletter sign-up.
+ *
+ * `source` is constrained to a known set rather than accepting free text: it
+ * comes from the client, and an open string field on a public unauthenticated
+ * endpoint is an invitation to write arbitrary content into the database. The
+ * default means an older client that does not send one still works.
+ */
+export const subscribeSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Enter a valid email address"),
+  source: z.enum(["popup", "footer"]).default("popup")
+});
+
 // A swatch colour, stored as #rrggbb.
 //
 // The format is enforced rather than accepting any CSS colour string: this
@@ -108,6 +121,34 @@ export const modelSchema = z.object({
   isActive: z.boolean().default(true)
 });
 
+/**
+ * Storefront settings an admin can change.
+ *
+ * An object of known keys rather than an open key/value pair: the table stores
+ * strings under a key, and letting the client choose the key would let any
+ * admin session write arbitrary rows. Adding a setting means adding it here.
+ *
+ * An empty string clears the setting — that is how the admin removes the hero.
+ */
+// A VIP price in minor units (pesewas), as a string because settings are
+// stored as text. Whole numbers only: the admin form converts "50.00" to
+// "5000" before sending, and a raw decimal reaching here would mean that
+// conversion was skipped — silently charging 50 pesewas instead of GHS 50.
+const vipPrice = z
+  .string()
+  .regex(/^\d+$/, "Price must be a whole number of pesewas")
+  .refine((value) => Number(value) >= 100 && Number(value) <= 10_000_000, "Price must be between GHS 1 and GHS 100,000")
+  .or(z.literal(""))
+  .optional();
+
+export const siteSettingsSchema = z.object({
+  heroImageUrl: mediaUrl.optional().or(z.literal("")),
+  vipPriceMonth: vipPrice,
+  vipPriceYear: vipPrice
+});
+
+export type SiteSettingsInput = z.infer<typeof siteSettingsSchema>;
+
 /** Cap on how many model shots one product can carry. */
 export const MAX_MODEL_SHOTS = 5;
 
@@ -115,6 +156,11 @@ export const productModelShotSchema = z.object({
   modelId: z.string().trim().min(1),
   imageUrl: mediaUrl
 });
+
+const optionalInstant = z
+  .union([z.string().datetime({ offset: true }), z.literal(""), z.null()])
+  .optional()
+  .transform((value) => (value ? new Date(value) : null));
 
 export const createProductSchema = z.object({
   name: z.string().trim().min(1).max(150),
@@ -142,7 +188,31 @@ export const createProductSchema = z.object({
       { message: "Each model can only have one shot per product" }
     ),
   variants: z.array(productVariantSchema).min(1),
-  isPublished: z.boolean().default(true)
+  isPublished: z.boolean().default(true),
+  // Drop timing. ISO timestamps from the browser, which converts the admin's
+  // local date-time before sending — so what is stored is an unambiguous
+  // instant, not a wall-clock time the server would have to guess a timezone
+  // for. Empty or absent means "not set".
+  releaseAt: optionalInstant,
+  earlyAccessAt: optionalInstant
+}).superRefine((data, ctx) => {
+  // An early window has to lead INTO a drop. Without a drop date there is
+  // nothing for it to be early for; and one that starts at or after the drop
+  // would silently never apply — the product would go straight to open.
+  if (data.earlyAccessAt && !data.releaseAt) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["earlyAccessAt"],
+      message: "Set a drop date for VIP early access to lead into"
+    });
+  }
+  if (data.earlyAccessAt && data.releaseAt && data.earlyAccessAt >= data.releaseAt) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["earlyAccessAt"],
+      message: "VIP early access has to start before the drop"
+    });
+  }
 });
 
 // Account self-service.
@@ -154,6 +224,25 @@ export const createProductSchema = z.object({
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, "Enter your current password"),
   newPassword: passwordSchema
+});
+
+export const profileSchema = z.object({
+  name: z.string().trim().min(1, "Enter your name").max(100)
+});
+
+/** Which VIP period to buy. The price is never taken from the client. */
+export const vipCheckoutSchema = z.object({
+  plan: z.enum(["MONTH", "YEAR"])
+});
+
+/**
+ * An admin giving someone VIP for free. Fixed lengths rather than any number:
+ * a typo of 3650 for 365 would hand out ten years, and a short list is also
+ * what makes a comp easy to reason about later in the audit log.
+ */
+export const vipGrantSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Enter the customer's email"),
+  days: z.union([z.literal(7), z.literal(30), z.literal(90), z.literal(365)])
 });
 
 export const updateAddressSchema = z.object({

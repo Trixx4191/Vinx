@@ -6,6 +6,7 @@ import { checkoutSchema } from "@/lib/validation";
 import { withSafeErrors } from "@/lib/safeErrors";
 import { rateLimit } from "@/lib/rateLimit";
 import { expirePendingOrders, PENDING_ORDER_TTL_MS } from "@/lib/orders";
+import { releaseState, canBuy } from "@/lib/release";
 
 export async function POST(req: NextRequest) {
   // Layer 1: must be logged in at all. Middleware already enforces this for
@@ -16,6 +17,9 @@ export async function POST(req: NextRequest) {
   if (!session || !userId) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
+  // Read fresh from the database by the session callback on this request, not
+  // from the login token — so leaving VIP takes effect at the next checkout.
+  const isVip = Boolean(session.user.vip);
 
   const { ok } = await rateLimit(`checkout:${userId}`, 10, 60_000);
   if (!ok) {
@@ -55,6 +59,16 @@ export async function POST(req: NextRequest) {
 
           if (!variant || !variant.product.isPublished) {
             throw new Error("STOCK_ERROR: item is no longer available");
+          }
+
+          // The drop rules, enforced where they cannot be bypassed. The product
+          // page hides "add to bag" for a non-VIP during early access, but that
+          // is presentation: anyone can POST to this route with any variant id,
+          // including one taken from a VIP's shared bag or guessed. Evaluated
+          // inside the transaction, so a drop cannot open or close between the
+          // check and the stock decrement.
+          if (!canBuy(releaseState(variant.product), { isVip })) {
+            throw new Error(`STOCK_ERROR: ${variant.product.name} is not available to buy yet`);
           }
 
           // Atomic check-and-decrement: only succeeds if enough stock exists

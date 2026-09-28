@@ -8,6 +8,7 @@ import {
   catalogHref,
   PAGE_SIZE
 } from "@/lib/productQuery";
+import { visibleReleaseWhere } from "@/lib/release";
 
 describe("parseCatalogParams", () => {
   it("defaults an empty query to page one of everything", () => {
@@ -77,6 +78,19 @@ describe("catalogWhere", () => {
       assert.equal(clause[field].mode, "insensitive");
     }
     assert.deepEqual(or.map((c) => Object.keys(c)[0]).sort(), ["description", "material", "name"]);
+  });
+
+  /**
+   * Unreleased drops must never be listed. The rule is `visibleReleaseWhere`,
+   * itself tested against `releaseState`; this checks the catalog applies it,
+   * and applies it for the moment passed in rather than a cached one.
+   */
+  it("always excludes drops that have not opened", () => {
+    const now = new Date("2026-10-11T00:00:00Z");
+    const where = catalogWhere(parseCatalogParams({ q: "fleece" }), now) as Record<string, unknown>;
+    assert.deepEqual(where.AND, [visibleReleaseWhere(now)]);
+    // And alongside a search, not instead of it.
+    assert.ok(Array.isArray(where.OR));
   });
 
   it("adds no OR clause when there is no search term", () => {

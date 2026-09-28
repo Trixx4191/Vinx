@@ -4,6 +4,7 @@ import {
   escapeHtml,
   orderConfirmationEmail,
   orderShippedEmail,
+  vipReceiptEmail,
   type OrderEmailData
 } from "@/lib/email/templates";
 
@@ -144,5 +145,37 @@ describe("orderShippedEmail", () => {
       trackingNumber: "X1"
     });
     assert.ok(!email.html.includes("<b>DHL</b>"));
+  });
+});
+
+describe("vipReceiptEmail", () => {
+  const base = {
+    customerName: "Ama",
+    planLabel: "1 month",
+    amount: 15000,
+    currency: "GHS",
+    vipUntil: new Date("2026-11-01T12:00:00Z"),
+    siteUrl: "https://vinx.example"
+  };
+
+  it("states the end date, the price and that it does not renew", () => {
+    const email = vipReceiptEmail(base);
+    assert.match(email.subject, /1 November 2026/);
+    for (const part of [email.html, email.text]) {
+      assert.match(part, /1 November 2026/);
+      assert.match(part, /150/);
+      assert.match(part, /does not renew automatically/);
+      assert.match(part, /https:\/\/vinx\.example\/account#vip/);
+    }
+  });
+
+  it("escapes a customer's name in the HTML", () => {
+    const email = vipReceiptEmail({ ...base, customerName: "<img src=x onerror=alert(1)>" });
+    assert.ok(!email.html.includes("<img src=x"));
+    assert.match(email.html, /&lt;img/);
+  });
+
+  it("greets without a name when there is none", () => {
+    assert.match(vipReceiptEmail({ ...base, customerName: null }).text, /^Hello,$/m);
   });
 });

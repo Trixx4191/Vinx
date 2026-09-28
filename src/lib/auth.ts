@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { authenticator } from "otplib";
 import { prisma } from "@/lib/prisma";
 import { isAdminRole } from "@/lib/roles";
+import { evaluateSession, type SessionUserRow } from "@/lib/sessionCheck";
 
 // Generic error message on purpose: never reveal whether the email or the
 // password was wrong. That distinction is exactly what account-enumeration
@@ -72,22 +73,76 @@ export const authOptions: NextAuthOptions = {
           }
         }
 
-        return { id: user.id, email: user.email, name: user.name, role: user.role };
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          sessionVersion: user.sessionVersion
+        };
       }
     })
   ],
   callbacks: {
+    /**
+     * Runs on every server-side session read — getServerSession in pages, API
+     * routes and layouts, and the client's /api/auth/session poll.
+     *
+     * The token is no longer trusted for anything but WHO the user is. What
+     * they are allowed to do is re-read from the database every time. See
+     * src/lib/sessionCheck.ts for the flaw this closes.
+     */
     async jwt({ token, user }) {
+      // Sign-in: stamp the token with the user's current session version.
       if (user) {
         token.id = user.id;
+        token.sv = (user as { sessionVersion?: number }).sessionVersion ?? 0;
         token.role = (user as { role?: string }).role;
+        return token;
       }
+
+      if (!token.id) return token;
+
+      let row: SessionUserRow | null;
+      try {
+        row = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { role: true, sessionVersion: true, vipUntil: true, name: true, avatarUrl: true }
+        });
+      } catch (error) {
+        // The database is unreachable. Two bad options, and this picks the
+        // safer one. Throwing here would make NextAuth clear the cookie —
+        // signing every user out on every database blip. Returning the token
+        // unchanged would let a revoked admin through while the database is
+        // down. Instead the identity is kept and the PRIVILEGE is dropped for
+        // this request: nobody is treated as an admin until the role can be
+        // confirmed, and the next successful read restores it.
+        console.error("[auth] could not verify session against the database", error);
+        return { ...token, role: undefined, vip: false };
+      }
+
+      const verdict = evaluateSession(token.sv, row);
+      if (verdict.kind === "revoked") {
+        // Throwing is how a JWT session ends in NextAuth v4: the session route
+        // catches it, clears the cookie and returns an empty session, and
+        // getServerSession then returns null everywhere.
+        throw new Error(`SESSION_REVOKED:${verdict.reason}`);
+      }
+
+      token.role = verdict.role;
+      token.vip = verdict.vip;
+      token.name = verdict.name;
+      token.picture = verdict.image;
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as { id?: string; role?: string }).id = token.id as string;
-        (session.user as { id?: string; role?: string }).role = token.role as string;
+        const user = session.user as { id?: string; role?: string; vip?: boolean; image?: string | null; name?: string | null };
+        user.id = token.id as string;
+        user.role = token.role as string | undefined;
+        user.vip = Boolean(token.vip);
+        user.name = (token.name as string | null | undefined) ?? null;
+        user.image = (token.picture as string | null | undefined) ?? null;
       }
       return session;
     }

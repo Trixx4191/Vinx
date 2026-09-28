@@ -1,3 +1,4 @@
+import { visibleReleaseWhere } from "@/lib/release";
 /**
  * Translate URL search params into a catalog query.
  *
@@ -63,8 +64,13 @@ export function parseCatalogParams(params: CatalogParams): ParsedCatalogQuery {
 }
 
 /** The Prisma `where` for a parsed query. */
-export function catalogWhere(query: ParsedCatalogQuery) {
-  const where: Record<string, unknown> = { isPublished: true };
+export function catalogWhere(query: ParsedCatalogQuery, now: Date = new Date()) {
+  const where: Record<string, unknown> = {
+    isPublished: true,
+    // Drops that have not opened to anyone yet are never listed. An `AND`,
+    // not a second `OR`, because the search below already owns `OR`.
+    AND: [visibleReleaseWhere(now)]
+  };
 
   if (query.category !== "all") {
     where.category = { slug: query.category };

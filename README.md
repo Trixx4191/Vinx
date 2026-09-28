@@ -22,6 +22,15 @@ S3-compatible image uploads, Paystack, Stripe, and PayPal integrations.
 4. `npm run seed` — adds sample categories and one placeholder product
 5. `npm run dev` — visit `http://localhost:3000`
 
+**After pulling changes that add a table:** `npm run db:migrate`. It applies the
+migration *and* regenerates the Prisma client. `prisma migrate deploy` on its
+own only changes the database — the client in `node_modules` keeps its old list
+of models, so a query on the new one fails with
+`Cannot read properties of undefined (reading 'upsert')`. The client is also
+regenerated on `npm install` and before every `npm run dev`, so a stale client
+should not reach a running server; if it ever does, the server log names the
+cause and the fix.
+
 ## What's built
 
 - Sign up (`/signup`) and log in (`/login`) with hashed passwords, rate-limited signup endpoint
@@ -48,6 +57,7 @@ Central work: a back-office UI, not developer intervention.
 - `/admin` — dashboard
 - `/admin/products` — full catalog table (including unpublished products)
 - `/admin/products/new` — create a product with variants
+- `/admin/homepage` — the homepage hero image, live on upload
 - `/admin/models` — the shoot roster, for on-model photography
 - `/admin/restock` — paste SKU,quantity pairs to bulk-update stock in one submit
 
@@ -107,6 +117,115 @@ Admin 2FA, optional IP allowlisting, and presigned S3-compatible uploads are
 implemented. Configure them before production use rather than relying on their
 local-development defaults.
 
+## Sessions: access ends when you take it away
+
+**The flaw this fixed.** Sessions are JWTs. The user's role was written into the
+token at login, and every guard — middleware, the admin layout, each admin page,
+each admin API route — read the role back out of that token. None of them asked
+the database. So revoking an admin in **Staff** changed a row nobody read: the
+revoked admin's token kept saying ADMIN, and every guard kept agreeing, for the
+rest of its 30-day life. Changing a password had the same shape — a session
+opened with a leaked password survived the change.
+
+No route was unguarded, and signup cannot set a role; the hole was that access,
+once granted, could not be taken back.
+
+**How it works now** (`src/lib/auth.ts`, `src/lib/sessionCheck.ts`):
+
+- Every server-side session read re-loads the user row. **The role comes from
+  the database, never the token** — a demotion takes effect on the next request.
+- Each user has a `sessionVersion`, stamped into their token at login. Bumping
+  it ends every session they have open. It is bumped on a **role change**, a
+  **password change** (which signs you out everywhere, this device included —
+  the login page says why), and **Sign out of all devices** on the account page.
+- A missing user or a version mismatch throws in the `jwt` callback, which is
+  how NextAuth v4 ends a JWT session: the cookie is cleared and
+  `getServerSession` returns `null` everywhere.
+- If the database is unreachable, identity is kept but **privilege is dropped**
+  for that request: nobody counts as an admin until the role can be confirmed.
+  Throwing instead would sign every user out on every database blip.
+- Tokens issued before this change carry no version and are read as 0, so
+  deploying it signs nobody out.
+
+**Middleware is now a coarse first filter.** It runs on the edge and cannot
+query the database, so it still reads the role from the token. A revoked admin
+can therefore pass middleware — and is stopped by the admin layout and every
+admin page and route, which all go through `getServerSession`.
+
+**Also fixed: an open redirect on the login page.** It accepted any
+`callbackUrl` beginning with `/`, but `//evil.example` begins with `/` too and
+browsers read it as another host — a genuine Vinx login link could forward a
+freshly signed-in shopper to a lookalike site. `safeCallbackPath` now allows
+only unambiguous same-site paths.
+
+## Customer accounts
+
+- **Create account** signs you straight in and lands on `/account`.
+- **Account page** — one column: photo, name, email and VIP status; orders
+  (each opening its own page with the status timeline and carrier tracking);
+  VIP; settings (name, address, password); sign out, and sign out of all devices.
+- **Profile photos** go through the server, not a presigned URL. Anyone can
+  create an account, and a presigned PUT cannot cap its own size, so a stranger
+  could otherwise push gigabytes into the bucket. The server enforces 2MB,
+  rate-limits uploads, and checks the file **is** a JPEG, PNG or WebP from its
+  own first bytes — the declared type and filename are the uploader's claim. A
+  renamed SVG or HTML file (a classic way to get script onto your domain via an
+  "image") is refused.
+- **Email is not editable.** It is the login identifier; changing it safely
+  needs a confirmation sent to the new address, or anyone holding a session
+  could move the account somewhere they control.
+
+## VIP and timed drops
+
+VIP is a **paid membership**, bought from the account page (`/account#vip`)
+with Paystack — MoMo or card — like an order.
+
+- **Prices are set at `/admin/vip`** (one month, one year). Until a price is
+  set that plan shows "Opening soon" and cannot be bought.
+- **It does not auto-renew.** Mobile money cannot be charged without the
+  customer approving each payment, so each purchase buys a fixed period
+  (30 or 365 days). Buying again adds on to the end of the current period, so
+  renewing early loses nothing. Access ends by itself when the period runs out —
+  it is checked on every request, no scheduled job needed.
+- **Payment is confirmed server-to-server** (callback and webhook both verify
+  with Paystack, check amount, currency and reference, and apply the period
+  exactly once). A receipt is emailed with the new end date.
+- **Refunds:** refund the payment in the Paystack dashboard, then press
+  "Refunded" on it at `/admin/vip`. That takes the period back off the
+  member. The button records the refund; it does not move money.
+- **Complimentary VIP:** the master admin can give a customer 1 week – 1 year
+  free from `/admin/vip` (for gifts or to put something right). It is recorded
+  alongside payments as "Complimentary" and can be ended the same way.
+
+A product can carry two optional times, set in section **05 / Drop** of the
+product form:
+
+| | before early access | VIP window | after the drop |
+| --- | --- | --- | --- |
+| Admins | preview only | preview | buy |
+| VIP | hidden | **see and buy** | buy |
+| Everyone else | hidden | see, with "Join VIP" | buy |
+
+Leave both empty and nothing changes — every existing product is already open.
+Non-members see early pieces on purpose: a window nobody can see is not a reason
+to join.
+
+The rules live in one place, `src/lib/release.ts`, and are applied by the
+catalog query, the public product API, the product page and — the one that
+matters — **the checkout route**, inside the order transaction. Hiding "Add to
+bag" is presentation; anyone can POST a variant id to checkout directly. Admins
+get no buying exemption: previewing is part of running the shop, buying ahead
+of customers is not.
+
+Dates are entered in the admin's local time and converted to an instant **in
+the browser**, both when saving and when the edit form loads — the pages render
+on the server, and converting there would use the server's timezone and shift
+every drop by the difference. A drop whose early window does not start before
+it, or has no drop to lead into, is refused at save.
+
+Not built yet, and the natural next step: an email to VIP members when an early
+window opens. That needs a scheduled job, like the existing stock-release cron.
+
 ## Surviving refreshes
 
 - **Login session**: stored in an httpOnly cookie by NextAuth, so it survives a refresh, a tab close/reopen, and even a browser restart (up to the 30-day session length) — nothing to build here, it's how cookie-based auth works.
@@ -135,51 +254,93 @@ skeletons. They are presentation-only and carry no product knowledge; the
 product tile itself lives in `src/components/ProductCard.tsx` so there is
 exactly one definition of what a product looks like in a grid.
 
-### The look, and where it is defined
+### The look: total minimalism
 
-Everything the design is made of is a token in `src/app/globals.css` or the
-`soft` ramp in `tailwind.config.ts`. No component hard-codes a colour, a
-tracking or a section gap.
+Four rules, and everything on the storefront follows from them:
 
-- **Ground.** Bone (`#faf8f6`), not white, and warm all the way down the ramp
-  rather than only at the pale end. The reference storefronts shoot on sand and
-  sit on sand because a warm ground flatters skin and knitwear; on a cold grey
-  both look grey too, and this catalog is mostly both. The product stage
-  (`--product-ground`) is one step darker, so a tile reads as an object on the
-  page rather than a hole in it.
-- **No surfaces.** Storefront content sits directly on the ground, separated by
-  space and the occasional hairline. There are no cards, borders-around-groups
-  or drop shadows — those are what make a fashion site look like a dashboard.
-  `.glass` survives for the **admin**, which is a genuinely different problem: a
-  dense back-office benefits from panels that group its fields.
-- **One typeface.** Archivo, one variable file, latin subset. It replaced Inter,
-  which is an excellent interface face and therefore reads as software. The
-  whole type system is two treatments of it: `type-d1/d2/d3` pull tracking in at
-  display sizes, `type-micro` pushes it out for labels, nav and buttons. A
-  display/text pairing was rejected on page weight — a second family is a second
-  download for every shopper, and plenty of this audience is on mobile data.
-- **Fluid display steps.** `--display-1/2/3` are `clamp()`, not
-  `text-4xl sm:text-6xl` stacks. A breakpoint pair jumps: at 639px a title is one
-  size and at 641px it is a third bigger, and every width in between gets
-  whichever of the two fits worst.
-- **One rhythm.** `--section-gap` is the space between every major section, as
-  the `.section-gap` utility. Airiness is most of what separates a storefront
-  that looks considered from one that looks cramped, and it only reads as
-  intentional when it is consistent.
-- **Underline fields, not boxes.** A page of boxed inputs is the single thing
-  that most makes a storefront look like admin software.
+1. **Black on white, one grey.** `#000`, `#fff`, and `#8a8a8a` for anything
+   secondary. The only other colour is a red reserved for errors.
+2. **One typeface, one size, capitals.** Geist Mono — a variable monospace, one
+   file — at 13px. Headings are not bigger; they are headings because of where
+   they sit. A monospace gives a product code, a price and a nav item the same
+   texture, which is what lets a page carry no headlines without feeling
+   unfinished.
+3. **Nothing has a box.** No borders around content, no cards, no fills, no
+   shadows, no radii. The only shapes on a page are the products.
+4. **Space is the design.** When in doubt, remove the thing and leave the gap.
 
-Two constraints that are easy to break by accident:
+What that meant in practice — everything below was removed:
 
-- **The Tailwind `spacing` and `fontSize` scales are never redefined.**
-  Overriding a key like `4` or `sm` in `theme.extend` silently rewrites every
-  existing `p-4` and `text-sm` across the app at once. This has bitten once
-  already, doubling every padding in the app.
-- **Keyframes are declared in `globals.css`, not in the Tailwind config.**
-  Tailwind only emits a `@keyframes` block when the matching `animate-*` utility
-  appears in the scanned source. `slideUp` was declared in the config and used
-  only by `.page-enter` in CSS, so it was never emitted and every page's entry
-  animation silently did nothing.
+- **Homepage.** A full-bleed hero with a headline and buttons over it, a
+  four-photo category strip, a "Selected pieces" section, an editorial split and
+  a three-column service band. The homepage is now **one image, centred, under
+  the VINX wordmark** — contained, floating on white, no frame, no text over it
+  — and then the catalog. Clicking the image scrolls to the products. The image
+  is set at **`/admin/homepage`** and goes live on upload, no deploy; with none
+  set, the page opens straight on the grid. It is stored in a small
+  `SiteSetting` key/value table whose keys are fixed by `siteSettingsSchema`, so
+  a request cannot write arbitrary rows. `Catalog` is a shared server component,
+  rendered by both `/` and `/products`.
+- **Header.** An announcement ticker, five category links and an account link.
+  It is now `+` · wordmark · bag. The `+` opens a full-screen menu on every
+  screen size — one navigation pattern, not a bar that collapses into a drawer at
+  a breakpoint — and rotates into the `×` that closes it.
+- **Catalog controls.** A filter drawer, search box, sort select, result count
+  and "clear filters" link. One centred row of category words remains. `?q=`
+  and `?sort=` still work as URL parameters; they just have no chrome.
+- **Product tiles.** Colour swatches, a "New" flag, a fabric line, a wishlist
+  heart, a price line and a "Sold out" chip. A tile is now the garment and one
+  line: the name, which swaps to the price on hover or focus. Both are always in
+  the DOM, so a screen reader hears name and price together.
+- **Product page.** A category kicker, the description, material, quantity
+  stepper, delivery table, help links, a thumbnail strip and a related-products
+  grid. It is now one centred image with arrows and dots, the name, the price,
+  sizes and colours as plain words, and "Add to bag". Description and material
+  sit behind **Details +**; quantity is changed in the bag.
+- **Footer.** Three link columns, tagline, city, delivery note, payment methods,
+  socials. It is one line: four help links and the year.
+- **Bag, checkout, account, sign-in, info pages.** Kickers, display headlines,
+  subtitles restating the headline, a sticky summary sidebar, bordered boxes.
+  Each now opens with one small centred title.
+
+The admin is exempt from rules 2 and 3 and says so in `globals.css`: someone
+filling in a twenty-field product form needs a proportional face at readable
+sizes and panels that group fields. It loads its own typeface (Archivo) **in
+its own layout**, so a shopper never downloads it.
+
+### Product framing, and what it asks of your photography
+
+Products are contained and inset on blank ground (`object-contain` plus
+`.zoom-tile` / `.zoom-stage`, percentage padding so a garment holds the same
+proportion of its cell at every width). Nothing is cropped and nothing frames
+it.
+
+**Shoot on pure white, or supply cut-outs (PNG with real transparency).** A
+contained photograph brings its own background with it: on a white page a
+white-sweep shot is seamless and the garment floats, while a shot on grey or
+beige shows as a visible rectangle — the border this design removed, smuggled
+back in inside the image file. The placeholders in `public/images/` are on
+grey, which is why they still show one. **The same applies to model shots and
+to the homepage hero** — all three are framed identically.
+
+### Motion
+
+Transform and opacity only, driven by data attributes — composited, so smooth
+on a mid-range phone.
+
+- **`Reveal`** fades tiles up as they scroll into view, staggered across each
+  row of six. It **fails visible** (the hidden state is applied after mount,
+  never server-rendered), fires once and disconnects, shows anything already on
+  screen without animating, and does nothing at all under reduced motion.
+- **The menu** fades in and assembles its list top to bottom.
+- **The gallery** fades between images; it moves by arrows, keyboard, dots or
+  swipe, and wraps.
+- **`NewsletterPopup`** slides up after six seconds and animates its exit too.
+  Not a modal — it covers nothing, traps nothing — and suppressed on cart,
+  checkout and admin. It posts to `/api/subscribe`, which writes to a real
+  `Subscriber` table: rate-limited, `source` an enum, upserting, and giving the
+  same response either way so it cannot be used to test whether an address is
+  on the list.
 
 ### The admin
 
@@ -464,6 +625,9 @@ that properly needs a token version on the user record.
 
 ## Catalog search and pagination
 
+> **The search box and sort control were removed from the UI.** `?q=` and
+> `?sort=` are still parsed, validated and honoured, so existing links work.
+
 Filtering, sorting and paging happen in the database, 24 products to a page.
 Previously the page loaded every published product and filtered in the browser,
 which meant a visitor downloaded the whole catalog to look at one category.
@@ -478,6 +642,10 @@ database may return one on page 1 and again on page 2 while dropping another;
 and the search term is length-capped before it reaches a `LIKE`.
 
 ## Colourway swatches
+
+> **Not currently shown on the storefront.** The grid no longer carries swatches
+> (see *The look*). `colorHex` is still set in the admin and `src/lib/swatch.ts`
+> is kept and tested, so bringing them back is a one-component change.
 
 The product grid shows a dot per colourway. Each dot's colour comes from one of
 two places, in order:
@@ -514,8 +682,8 @@ methods.
 commitments to a customer — a returns window and a delivery estimate are terms
 you are agreeing to when someone buys — so they are deliberately not scattered
 through the markup where you would have had to hunt for them. They appear in the
-footer, the customer-service pages, the product page's delivery note and the
-homepage service band, and changing them here changes all of those at once.
+customer-service pages and the product page's Details panel, and changing them
+here changes all of those at once.
 
 The customer-service pages (`/delivery`, `/returns`, `/size-guide`, `/contact`,
 `/about`) exist so the footer does not link to 404s. A shopper who taps

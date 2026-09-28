@@ -1,71 +1,79 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Product, formatPrice, productMedia } from "@/types/product";
 import { useCart } from "@/context/CartContext";
-import ProductCard from "@/components/ProductCard";
 import { SITE } from "@/content/site";
 import { isLowStock } from "@/lib/inventory";
-import { Badge, Button, Heading, ImageGallery, Kicker, ProductGrid, SectionHeader } from "@/components/luxury";
+import { formatDropDate, type ReleaseState } from "@/lib/release";
+import { ImageGallery } from "@/components/luxury";
 
-export default function ProductDetailClient({
-  product,
-  relatedProducts
-}: {
-  product: Product;
-  relatedProducts: Product[];
-}) {
-  const [quantity, setQuantity] = useState(1);
-  const [added, setAdded] = useState(false);
+/**
+ * The product page, reduced to: the image, the name, the price, a size, and a
+ * way to add it.
+ *
+ * Gone from the default view: the category kicker, the description, the
+ * material line, a quantity stepper, a delivery/returns table, two help links,
+ * and a "more from this collection" grid. The description, material and help
+ * sit behind "Details" for anyone who wants them; quantity is adjustable in the
+ * bag, where people actually change it; and the related grid was the catalog
+ * again, one click from the `+` menu.
+ */
+export type ProductAccess = {
+  state: ReleaseState;
+  /** Decided on the server with the same rule checkout enforces. */
+  purchasable: boolean;
+  releaseAt: string | null;
+  signedIn: boolean;
+};
+
+export default function ProductDetailClient({ product, access }: { product: Product; access: ProductAccess }) {
   const { addItem } = useCart();
+  const media = useMemo(() => productMedia(product), [product]);
 
   const sizes = useMemo(() => Array.from(new Set(product.variants.map((v) => v.size))), [product]);
   const colors = useMemo(() => Array.from(new Set(product.variants.map((v) => v.color))), [product]);
-  const media = useMemo(() => productMedia(product), [product]);
 
-  const [size, setSize] = useState(sizes[0] ?? "");
-  const [color, setColor] = useState(colors[0] ?? "");
-
-  const selectedVariant = product.variants.find((v) => v.size === size && v.color === color);
-  const inStock = selectedVariant ? selectedVariant.inStock && selectedVariant.quantity > 0 : false;
-  const maxQuantity = selectedVariant?.quantity ?? 0;
-
-  // Switching to a variant with less stock used to leave the old, higher count
-  // in the input — the order would then be rejected at checkout with a 409
-  // rather than here. The server remains the authority on stock; this just
-  // stops the UI from proposing something it already knows is unbuyable.
-  useEffect(() => {
-    setQuantity((current) => Math.min(current, Math.max(maxQuantity, 1)));
-  }, [maxQuantity]);
-
-  function variantFor(nextSize: string, nextColor: string) {
-    return product.variants.find((variant) => variant.size === nextSize && variant.color === nextColor);
-  }
-
-  function isAvailable(nextSize: string, nextColor: string) {
-    const variant = variantFor(nextSize, nextColor);
+  const variantFor = (s: string, c: string) => product.variants.find((v) => v.size === s && v.color === c);
+  const isAvailable = (s: string, c: string) => {
+    const variant = variantFor(s, c);
     return Boolean(variant?.inStock && variant.quantity > 0);
-  }
+  };
 
-  function selectSize(nextSize: string) {
-    setSize(nextSize);
-    // If the current colour isn't made in this size, move to one that is
-    // rather than leaving the pair in an unbuyable state.
-    if (!isAvailable(nextSize, color)) {
-      const fallback = colors.find((candidate) => isAvailable(nextSize, candidate));
+  // Open on a combination that can actually be bought. Defaulting to the first
+  // size listed lands a shopper on "sold out" whenever that one is gone, which
+  // reads as the whole product being unavailable.
+  const initial = useMemo(() => {
+    for (const s of sizes) for (const c of colors) if (isAvailable(s, c)) return { s, c };
+    return { s: sizes[0] ?? "", c: colors[0] ?? "" };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product]);
+
+  const [size, setSize] = useState(initial.s);
+  const [color, setColor] = useState(initial.c);
+  const [added, setAdded] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+
+  const selected = variantFor(size, color);
+  const inStock = Boolean(selected?.inStock && selected.quantity > 0);
+
+  function selectSize(next: string) {
+    setSize(next);
+    // Keep the pair buyable: if this colour is not made in the new size, move to
+    // one that is.
+    if (!isAvailable(next, color)) {
+      const fallback = colors.find((candidate) => isAvailable(next, candidate));
       if (fallback) setColor(fallback);
     }
   }
 
-  function addToCart() {
-    if (!selectedVariant || !inStock) return;
-    // Note: this price is only a display convenience for the cart UI.
-    // The real charge is always recalculated server-side from the database
-    // at checkout — a client-editable value (localStorage, devtools) is
-    // never trusted as the source of truth for what gets charged.
+  function add() {
+    if (!selected || !inStock) return;
+    // The price here is display-only for the bag. What is charged is always
+    // recomputed server-side from the database at checkout.
     addItem({
-      variantId: selectedVariant.id,
+      variantId: selected.id,
       productSlug: product.slug,
       name: product.name,
       frontImageUrl: product.frontImageUrl,
@@ -73,207 +81,181 @@ export default function ProductDetailClient({
       color,
       price: product.price,
       currency: product.currency,
-      quantity,
-      maxQuantity: selectedVariant.quantity
+      quantity: 1,
+      maxQuantity: selected.quantity
     });
     setAdded(true);
-    setTimeout(() => setAdded(false), 1500);
+    setTimeout(() => setAdded(false), 1600);
   }
 
   return (
-    <div>
-      <div className="grid gap-8 md:grid-cols-[minmax(0,1.12fr)_minmax(340px,0.88fr)] md:gap-14">
-        <ImageGallery media={media} priority />
+    <article className="pt-6 sm:pt-10">
+      <ImageGallery media={media} priority />
 
-        {/* No border, no white fill, no padding of its own. This was a bordered
-            white card floating on the bone ground, which is the one gesture this
-            system does not make — on the storefront, content sits on the page
-            and is separated by space, not enclosed in boxes. The photograph
-            beside it is the object on the page; putting the copy in a box of its
-            own makes them compete.
+      <div className="mx-auto mt-10 flex max-w-sm flex-col items-center text-center">
+        <h1>{product.name}</h1>
+        <p className="type-label mt-2">{formatPrice(product.price, product.currency)}</p>
 
-            `top-28` clears the sticky header, which is two rows tall. */}
-        <div className="flex flex-col md:sticky md:top-28 md:h-fit md:pl-2">
-          <Kicker>{product.category?.name ?? "Piece"}</Kicker>
+        {/* A choice with one option is not a choice. "One size" products and
+            single-colour products skip the row entirely. */}
+        {sizes.length > 1 && (
+          <Choice
+            label="Size"
+            values={sizes}
+            selected={size}
+            onSelect={selectSize}
+            enabled={(value) => colors.some((c) => isAvailable(value, c))}
+          />
+        )}
 
-          {/* h1 for the outline, display-2 for the eye: the product name is the
-              page's subject, but a collection-sized headline would overpower the
-              photograph it sits beside. */}
-          <Heading level={1} size={2} className="mt-4">
-            {product.name}
-          </Heading>
+        {colors.length > 1 && (
+          <Choice
+            label="Colour"
+            values={colors}
+            selected={color}
+            onSelect={setColor}
+            enabled={(value) => isAvailable(size, value)}
+          />
+        )}
 
-          <p className="mt-4 text-[17px] text-soft-600">
-            {formatPrice(product.price, product.currency)}
-          </p>
-
-          <p className="type-body mt-7 max-w-copy">{product.description}</p>
-
-          {product.material && (
-            <p className="type-micro mt-4 text-soft-400">{product.material}</p>
-          )}
-
-          <div className="mt-8 space-y-6">
-            <Options
-              label="Size"
-              values={sizes}
-              selected={size}
-              onSelect={selectSize}
-              isEnabled={(value) => colors.some((candidate) => isAvailable(value, candidate))}
-            />
-
-            <Options
-              label="Colour"
-              values={colors}
-              selected={color}
-              onSelect={setColor}
-              isEnabled={(value) => isAvailable(size, value)}
-            />
-
-            <div>
-              <p className="type-micro mb-2 text-soft-400">Quantity</p>
-              <div className="flex w-fit items-center border border-soft-300">
-                <button
-                  type="button"
-                  aria-label="Decrease quantity"
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="px-4 py-2 text-soft-500 transition-colors hover:text-soft-700"
-                >
-                  −
-                </button>
-                <input
-                  type="number"
-                  min={1}
-                  max={Math.max(maxQuantity, 1)}
-                  value={quantity}
-                  aria-label="Quantity"
-                  onChange={(event) =>
-                    setQuantity(
-                      Math.max(1, Math.min(Number(event.target.value) || 1, Math.max(maxQuantity, 1)))
-                    )
-                  }
-                  className="w-12 border-x border-soft-300 bg-transparent py-2 text-center text-sm text-soft-700 focus:outline-none"
-                />
-                <button
-                  type="button"
-                  aria-label="Increase quantity"
-                  onClick={() => setQuantity(Math.min(Math.max(maxQuantity, 1), quantity + 1))}
-                  className="px-4 py-2 text-soft-500 transition-colors hover:text-soft-700"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <p className="mt-6" aria-live="polite">
-            {inStock ? (
-              // Only surfaced once it is genuinely scarce. A permanent "37 in
-              // stock" is noise; "2 left" is information.
-              isLowStock(maxQuantity) ? (
-                <span className="type-micro text-vienna-red">
-                  {maxQuantity === 1 ? "Last one" : `Only ${maxQuantity} left`}
-                </span>
-              ) : (
-                <span className="type-micro text-soft-500">In stock</span>
-              )
-            ) : (
-              <Badge variant="alert">Out of stock</Badge>
+        {/* Early access, seen by someone who is not VIP: the piece is visible
+            — that is the point of the window — but in place of "add to bag"
+            is when it opens to everyone and the way in. The server would refuse
+            the order regardless; this just says so before they try. */}
+        {!access.purchasable && access.state === "early" && (
+          <div className="mt-10 flex flex-col items-center">
+            <p className="type-label">VIP early access</p>
+            {access.releaseAt && (
+              <p className="type-micro mt-1 text-[var(--muted)]">
+                Opens to everyone {formatDropDate(access.releaseAt)}
+              </p>
             )}
+            <Link
+              href={access.signedIn ? "/account#vip" : "/signup"}
+              className="btn-primary mt-6"
+            >
+              {access.signedIn ? "Join VIP" : "Create account for VIP"}
+            </Link>
+          </div>
+        )}
+
+        {/* An admin previewing a drop before any window has opened. */}
+        {access.state === "upcoming" && (
+          <p className="type-micro mt-10 text-[var(--muted)]">
+            Preview · not yet visible to customers
+            {access.releaseAt && ` · opens ${formatDropDate(access.releaseAt)}`}
           </p>
+        )}
 
-          <Button size="lg" fullWidth className="mt-7" onClick={addToCart} disabled={!inStock}>
-            {added ? "Added to bag" : "Add to bag"}
-          </Button>
+        {/* Text, not a filled bar. The one action on the page does not need a
+            black rectangle to be found — it is the only thing here that says
+            "add". */}
+        {access.purchasable && access.state === "early" && (
+          <p className="type-micro mt-10 text-[var(--muted)]">VIP early access</p>
+        )}
+        {access.purchasable && (
+        <button
+          type="button"
+          onClick={add}
+          disabled={!inStock}
+          aria-live="polite"
+          className={`type-label ${access.state === "early" ? "mt-3" : "mt-10"} flex items-center gap-2 px-4 py-2 transition-opacity hover:opacity-50 disabled:cursor-not-allowed disabled:text-[var(--muted)] disabled:hover:opacity-100`}
+        >
+          {inStock ? (
+            <>
+              <svg width="11" height="11" viewBox="0 0 16 16" aria-hidden>
+                <path d="M8 0v16M0 8h16" stroke="currentColor" strokeWidth="1.4" fill="none" />
+              </svg>
+              {added ? "Added" : "Add to bag"}
+            </>
+          ) : (
+            "Sold out"
+          )}
+        </button>
+        )}
 
-          {/* The two questions every shopper has at the moment they are deciding
-              — when does it arrive, and what if it does not fit — answered where
-              the decision happens rather than in the footer. */}
-          <div className="mt-8 border-t border-soft-200 pt-6">
-            <dl className="space-y-2.5">
-              <div className="flex justify-between gap-4">
-                <dt className="type-micro text-soft-400">Delivery</dt>
-                <dd className="text-[13px] text-soft-600">
-                  {SITE.delivery.accra} in {SITE.city}
-                </dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="type-micro text-soft-400">Returns</dt>
-                <dd className="text-[13px] text-soft-600">{SITE.returns.windowDays} days</dd>
-              </div>
-            </dl>
-            <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2">
-              <Link href="/size-guide" className="type-micro text-soft-500 underline decoration-soft-300 underline-offset-4 transition-colors hover:text-soft-800">
+        {/* Only when it is genuinely scarce. A permanent stock count is noise;
+            "2 left" is information. */}
+        {inStock && selected && isLowStock(selected.quantity) && (
+          <p className="type-micro mt-2 text-[var(--muted)]">
+            {selected.quantity === 1 ? "Last one" : `${selected.quantity} left`}
+          </p>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setDetailsOpen((open) => !open)}
+          aria-expanded={detailsOpen}
+          aria-controls="product-details"
+          className="type-micro mt-12 text-[var(--muted)] transition-colors hover:text-black"
+        >
+          Details {detailsOpen ? "−" : "+"}
+        </button>
+
+        {detailsOpen && (
+          <div id="product-details" className="page-enter mt-6 space-y-5">
+            <p className="type-body">{product.description}</p>
+            {product.material && <p className="type-micro text-[var(--muted)]">{product.material}</p>}
+            <p className="type-micro text-[var(--muted)]">
+              Delivery {SITE.delivery.accra} in {SITE.city} · Returns {SITE.returns.windowDays} days
+            </p>
+            <p className="flex justify-center gap-5">
+              <Link href="/size-guide" className="type-micro underline underline-offset-4 hover:opacity-50">
                 Size guide
               </Link>
-              <Link href="/delivery" className="type-micro text-soft-500 underline decoration-soft-300 underline-offset-4 transition-colors hover:text-soft-800">
-                Delivery &amp; returns
+              <Link href="/returns" className="type-micro underline underline-offset-4 hover:opacity-50">
+                Returns
               </Link>
-            </div>
+            </p>
           </div>
-        </div>
+        )}
       </div>
-
-      {relatedProducts.length > 0 && (
-        <section className="section-gap">
-          <SectionHeader kicker="Continue exploring" title="More from this collection." />
-
-          <ProductGrid columns={4} className="mt-10">
-            {relatedProducts.map((relatedProduct) => (
-              <ProductCard key={relatedProduct.id} product={relatedProduct} />
-            ))}
-          </ProductGrid>
-        </section>
-      )}
-    </div>
+    </article>
   );
 }
 
-/** A labelled row of selectable chips that disables combinations with no stock. */
-function Options({
+/**
+ * A row of plain words. The selected one is black; the rest are grey; one that
+ * cannot be bought is struck through. No chips, no borders — the difference is
+ * carried entirely by tone, and the strike-through makes "unavailable" survive
+ * a phone screen in sunlight, where two greys would not.
+ */
+function Choice({
   label,
   values,
   selected,
   onSelect,
-  isEnabled
+  enabled
 }: {
   label: string;
   values: string[];
   selected: string;
   onSelect: (value: string) => void;
-  isEnabled: (value: string) => boolean;
+  enabled: (value: string) => boolean;
 }) {
-  if (values.length === 0) return null;
-
   return (
-    <div>
-      <p className="type-micro mb-2 text-soft-400">{label}</p>
-      <div className="flex flex-wrap gap-2">
+    <fieldset className="mt-8">
+      <legend className="sr-only">{label}</legend>
+      <div className="flex flex-wrap justify-center gap-x-5 gap-y-2">
         {values.map((value) => {
-          const enabled = isEnabled(value);
+          const available = enabled(value);
           const active = value === selected;
           return (
             <button
               key={value}
+              type="button"
               onClick={() => onSelect(value)}
-              disabled={!enabled}
+              disabled={!available}
               aria-pressed={active}
-              // A sold-out combination is struck through rather than only
-              // faded. At 30% opacity on a warm ground the difference between
-              // "available" and "not" was a tone, which is the kind of
-              // distinction that disappears in sunlight on a phone.
-              className={`min-w-[3rem] border px-4 py-2.5 text-[11px] uppercase tracking-[0.1em] transition-colors duration-300
-                disabled:cursor-not-allowed disabled:border-soft-200 disabled:text-soft-400 disabled:line-through ${
-                  active
-                    ? "border-soft-700 bg-soft-700 text-soft-50"
-                    : "border-soft-300 text-soft-600 hover:border-soft-700 hover:text-soft-800"
-                }`}
+              className={`type-label px-1 py-1 transition-colors duration-200 disabled:cursor-not-allowed disabled:line-through disabled:opacity-40 ${
+                active ? "text-black underline decoration-1 underline-offset-[6px]" : "text-[var(--muted)] hover:text-black"
+              }`}
             >
               {value}
             </button>
           );
         })}
       </div>
-    </div>
+    </fieldset>
   );
 }

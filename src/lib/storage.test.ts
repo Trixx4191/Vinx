@@ -5,7 +5,10 @@ import {
   buildStorageKey,
   isS3Configured,
   STORAGE_KEY_PATTERN,
-  getPresignedUploadUrl
+  getPresignedUploadUrl,
+  sniffImageType,
+  buildAvatarKey,
+  AVATAR_KEY_PATTERN
 } from "@/lib/storage";
 
 const S3_VARS = [
@@ -180,5 +183,44 @@ describe("getPresignedUploadUrl", () => {
 
   it("refuses when no bucket is configured rather than signing a useless URL", async () => {
     await assert.rejects(() => getPresignedUploadUrl("photo.png", "image/png"), /S3_BUCKET/);
+  });
+});
+
+describe("sniffImageType — profile photo uploads", () => {
+  const bytes = (...values: number[]) => new Uint8Array(values);
+  const text = (value: string) => new TextEncoder().encode(value);
+
+  it("recognises JPEG, PNG and WebP from their first bytes", () => {
+    assert.equal(sniffImageType(bytes(0xff, 0xd8, 0xff, 0xe0, 0, 0)), "image/jpeg");
+    assert.equal(sniffImageType(bytes(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0)), "image/png");
+    assert.equal(sniffImageType(text("RIFF\u0000\u0000\u0000\u0000WEBPVP8 ")), "image/webp");
+  });
+
+  /**
+   * Anyone can sign up, so anyone can upload a profile photo. The declared type
+   * and the filename are the uploader's claim; these are files that would be
+   * served from the shop's own storage if the claim were believed. An SVG or
+   * HTML file can carry script — the classic route from "image upload" to code
+   * running on your domain.
+   */
+  it("refuses files that are not really images, whatever they are called", () => {
+    for (const [name, content] of [
+      ["svg", text('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>')],
+      ["html", text("<!doctype html><script>alert(1)</script>")],
+      ["gif", text("GIF89a......")],
+      ["riff but not webp", text("RIFF\u0000\u0000\u0000\u0000WAVEfmt ")],
+      ["empty", new Uint8Array()],
+      ["truncated png", bytes(0x89, 0x50, 0x4e)]
+    ] as const) {
+      assert.equal(sniffImageType(content), null, name);
+    }
+  });
+});
+
+describe("buildAvatarKey", () => {
+  it("produces keys the avatar pattern accepts, and product keys it does not", () => {
+    assert.ok(AVATAR_KEY_PATTERN.test(buildAvatarKey("image/png")));
+    assert.equal(AVATAR_KEY_PATTERN.test(buildStorageKey("png")), false);
+    assert.equal(AVATAR_KEY_PATTERN.test("avatars/../../etc/passwd"), false);
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ImageUploadField from "@/components/ImageUploadField";
 import { swatchColour } from "@/lib/swatch";
@@ -8,7 +8,7 @@ import { swatchColour } from "@/lib/swatch";
 type VariantRow = { size: string; color: string; colorHex?: string; sku: string; quantity: number };
 type ModelShotRow = { modelId: string; imageUrl: string };
 export type ModelOption = { id: string; name: string; gender: string; heightCm: number | null; wearingSize: string | null; referenceImageUrl: string | null; isActive: boolean };
-type ProductFormData = { id?: string; name: string; description: string; material: string; price: number; categorySlug: string; frontImageUrl: string; backImageUrl: string; hoverVideoUrl?: string; galleryImages: string[]; modelShots: ModelShotRow[]; isPublished: boolean; variants: VariantRow[] };
+type ProductFormData = { id?: string; name: string; description: string; material: string; price: number; categorySlug: string; frontImageUrl: string; backImageUrl: string; hoverVideoUrl?: string; galleryImages: string[]; modelShots: ModelShotRow[]; isPublished: boolean; variants: VariantRow[]; releaseAt?: string; earlyAccessAt?: string };
 
 // Matches the cap in createProductSchema, so the form can't offer a slot the
 // API would reject.
@@ -17,7 +17,18 @@ const MAX_MODEL_SHOTS = 5;
 
 export default function AdminProductForm({ initial, models = [] }: { initial?: ProductFormData; models?: ModelOption[] }) {
   const router = useRouter();
-  const [form, setForm] = useState<ProductFormData>(initial ?? { name: "", description: "", material: "", price: 0, categorySlug: "", frontImageUrl: "", backImageUrl: "", hoverVideoUrl: "", galleryImages: [], modelShots: [], isPublished: true, variants: [{ size: "", color: "", sku: "", quantity: 0 }] });
+  const [form, setForm] = useState<ProductFormData>(initial ?? { name: "", description: "", material: "", price: 0, categorySlug: "", frontImageUrl: "", backImageUrl: "", hoverVideoUrl: "", galleryImages: [], modelShots: [], isPublished: true, releaseAt: "", earlyAccessAt: "", variants: [{ size: "", color: "", sku: "", quantity: 0 }] });
+  // The edit page passes drop dates as stored instants (ISO, UTC). They are
+  // turned into local wall-clock values for the inputs HERE, after mount, in
+  // the admin's browser — the page itself renders on the server, and converting
+  // there would use the server's timezone and shift every drop by the gap.
+  useEffect(() => {
+    setForm((current) => ({
+      ...current,
+      releaseAt: current.releaseAt?.includes("Z") ? toLocalInput(current.releaseAt) : current.releaseAt,
+      earlyAccessAt: current.earlyAccessAt?.includes("Z") ? toLocalInput(current.earlyAccessAt) : current.earlyAccessAt
+    }));
+  }, []);
   const [priceText, setPriceText] = useState(initial ? (initial.price / 100).toFixed(2) : "");
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -80,7 +91,17 @@ export default function AdminProductForm({ initial, models = [] }: { initial?: P
     if (!form.frontImageUrl || !form.backImageUrl) { setError("Upload both product images before saving."); return; }
     if (form.variants.length === 0 || form.variants.some((variant) => !variant.size || !variant.color || !variant.sku)) { setError("Complete every variant row before saving."); return; }
     setLoading(true);
-    const payload = { ...form, price: Math.round(Number(priceText) * 100), currency: "GHS" };
+    const payload = {
+      ...form,
+      price: Math.round(Number(priceText) * 100),
+      currency: "GHS",
+      // <input type="datetime-local"> gives a wall-clock time with no zone.
+      // Converting here, in the admin's browser, turns it into the instant they
+      // meant — the server would otherwise have to guess which timezone "12:00"
+      // was in, and would guess its own.
+      releaseAt: toInstant(form.releaseAt),
+      earlyAccessAt: toInstant(form.earlyAccessAt)
+    };
     const res = await fetch(form.id ? `/api/admin/products/${form.id}` : "/api/admin/products", { method: form.id ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     const data = await res.json().catch(() => ({})); setLoading(false);
     if (!res.ok) { setError(data.error ?? "Could not save product."); return; }
@@ -146,9 +167,9 @@ export default function AdminProductForm({ initial, models = [] }: { initial?: P
         <span className="text-[10px] uppercase tracking-[0.12em] text-soft-400">{form.modelShots.length} / {MAX_MODEL_SHOTS}</span>
       </div>
       <p className="mt-2 max-w-xl text-sm text-soft-500">
-        Optional. Upload a photograph of a model wearing this piece and it leads the gallery on the product
-        page, captioned with their height and the size they have on. Leave this empty and the product shows
-        only the flat shots.
+        Optional. Upload an image of a model wearing this piece and it leads the gallery on the product
+        page, captioned with their height and the size they have on. It is shown exactly like the product
+        shots — no frame — so produce it on a pure white background or as a transparent PNG.
       </p>
 
       {models.length === 0 ? (
@@ -202,7 +223,7 @@ export default function AdminProductForm({ initial, models = [] }: { initial?: P
                         field only once a model is picked makes the order
                         obvious without an error message. */}
                     {pendingModelId ? (
-                      <ImageUploadField label={`Shot of ${modelById(pendingModelId).name}`} hint="The image you produced of this model wearing this piece." value="" onChange={addModelShot} />
+                      <ImageUploadField label={`Shot of ${modelById(pendingModelId).name}`} hint="This model wearing this piece, on a pure white background or as a transparent PNG — it floats on the page exactly like the product shots." value="" onChange={addModelShot} />
                     ) : (
                       <div>
                         <span className="field-label">Shot</span>
@@ -218,7 +239,46 @@ export default function AdminProductForm({ initial, models = [] }: { initial?: P
       )}
     </section>
 
-    <section className="admin-panel p-5 sm:p-7"><div className="flex items-start justify-between gap-4"><div><p className="admin-kicker">05 / Variants and inventory</p><p className="mt-2 text-sm text-soft-500">Each size, color, and SKU combination is tracked separately.</p></div><button type="button" onClick={() => setForm((current) => ({ ...current, variants: [...current.variants, { size: "", color: "", colorHex: "", sku: "", quantity: 0 }] }))} className="btn-secondary shrink-0 px-3 py-2 text-xs">Add variant</button></div>
+    <section className="admin-panel p-5 sm:p-7">
+      <p className="admin-kicker">05 / Drop</p>
+      <p className="mt-2 max-w-xl text-sm text-soft-500">
+        Optional. Leave both empty and the product is live as soon as it is published. Set a drop date and it
+        stays hidden until then; add an early-access time and VIP members can see and buy it from that moment,
+        before everyone else.
+      </p>
+      <div className="mt-5 grid gap-5 sm:grid-cols-2">
+        <label className="block">
+          <span className="field-label">VIP early access from</span>
+          <input
+            type="datetime-local"
+            value={form.earlyAccessAt ?? ""}
+            onChange={(event) => setForm((current) => ({ ...current, earlyAccessAt: event.target.value }))}
+            className="input-soft"
+          />
+        </label>
+        <label className="block">
+          <span className="field-label">Drop — open to everyone</span>
+          <input
+            type="datetime-local"
+            value={form.releaseAt ?? ""}
+            onChange={(event) => setForm((current) => ({ ...current, releaseAt: event.target.value }))}
+            className="input-soft"
+          />
+        </label>
+      </div>
+      {(form.releaseAt || form.earlyAccessAt) && (
+        <button
+          type="button"
+          onClick={() => setForm((current) => ({ ...current, releaseAt: "", earlyAccessAt: "" }))}
+          className="mt-4 text-xs text-soft-400 underline underline-offset-4 hover:text-soft-700"
+        >
+          Clear both — make it live now
+        </button>
+      )}
+      <p className="mt-4 text-xs text-soft-400">Times are in your computer&apos;s timezone.</p>
+    </section>
+
+    <section className="admin-panel p-5 sm:p-7"><div className="flex items-start justify-between gap-4"><div><p className="admin-kicker">06 / Variants and inventory</p><p className="mt-2 text-sm text-soft-500">Each size, color, and SKU combination is tracked separately.</p></div><button type="button" onClick={() => setForm((current) => ({ ...current, variants: [...current.variants, { size: "", color: "", colorHex: "", sku: "", quantity: 0 }] }))} className="btn-secondary shrink-0 px-3 py-2 text-xs">Add variant</button></div>
       <p className="mt-3 text-xs text-soft-400">The swatch beside each colour is what shoppers see on the grid. It is seeded from the colour name — adjust it to match the actual garment.</p>
       <div className="mt-5 space-y-3">
         {form.variants.map((variant, index) => (
@@ -242,4 +302,20 @@ export default function AdminProductForm({ initial, models = [] }: { initial?: P
     </section>
     {error && <p className="border-l-2 border-vienna-red pl-3 text-sm text-vienna-red">{error}</p>}{saved && <p className="border-l-2 border-vienna-green pl-3 text-sm text-soft-600">Product saved.</p>}<button type="submit" disabled={loading} className="btn-primary w-full py-3.5 sm:w-auto">{loading ? "Saving product..." : form.id ? "Save changes" : "Create product"}</button>
   </form>;
+}
+
+/** A datetime-local value ("2026-10-12T12:00") as an ISO instant, or "" when empty. */
+function toInstant(local: string | undefined): string {
+  if (!local) return "";
+  const date = new Date(local); // parsed in the browser's own timezone
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString();
+}
+
+/** An ISO instant as a datetime-local value in the browser's timezone — the inverse of `toInstant`. */
+function toLocalInput(iso: string | Date | null | undefined): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }

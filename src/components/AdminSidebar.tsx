@@ -11,8 +11,10 @@ import { isSuperAdminRole } from "@/lib/roles";
 const navigation = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/orders", label: "Orders" },
+  { href: "/admin/homepage", label: "Homepage" },
   { href: "/admin/products", label: "Products" },
   { href: "/admin/models", label: "Models" },
+  { href: "/admin/vip", label: "VIP" },
   { href: "/admin/restock", label: "Inventory" },
   { href: "/admin/staff", label: "Staff", superOnly: true },
   { href: "/admin/security", label: "Security" },

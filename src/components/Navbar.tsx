@@ -1,58 +1,83 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useCart } from "@/context/CartContext";
-import { usePathname } from "next/navigation";
 import { isAdminRole } from "@/lib/roles";
-import { HandbagIcon } from "@/components/HandbagIcon";
-import { AccountIcon } from "@/components/AccountIcon";
-import BrandMark from "@/components/BrandMark";
 
 /**
- * Shop navigation, defined once and rendered twice — the desktop bar and the
- * mobile drawer read from the same array, so the two can never drift into
- * offering different categories.
+ * The header is three things: a `+` that opens the menu, the wordmark, and the
+ * bag. Everything that used to sit in it — an announcement ticker, five
+ * category links, an account link with an icon and a label — now lives behind
+ * the `+`, on every screen size.
+ *
+ * A single menu pattern on desktop and phone is itself a simplification: there
+ * is one navigation to learn and one to maintain, not a bar that collapses into
+ * a drawer at an arbitrary breakpoint.
  */
-const SHOP_LINKS = [
-  { href: "/products", label: "All" },
+
+const SHOP = [
+  { href: "/", label: "All" },
   { href: "/products?category=hoodies", label: "Hoodies" },
-  { href: "/products?category=t-shirts", label: "Tees" },
+  { href: "/products?category=t-shirts", label: "T-Shirts" },
   { href: "/products?category=jackets", label: "Jackets" },
+  { href: "/products?category=pants", label: "Pants" },
   { href: "/products?category=accessories", label: "Accessories" }
 ];
 
-/** Repeated because a marquee needs two copies to loop without a visible seam. */
-const TICKER = [
-  "Free delivery in Accra over GHS 400",
-  "International shipping",
-  "Mobile money · Card · PayPal"
+const HELP = [
+  { href: "/delivery", label: "Delivery" },
+  { href: "/returns", label: "Returns" },
+  { href: "/size-guide", label: "Size guide" },
+  { href: "/contact", label: "Contact" }
 ];
 
 export default function Navbar() {
+  const pathname = usePathname();
   const { data: session } = useSession();
   const { totalItems } = useCart();
-  const pathname = usePathname();
   const isAdmin = isAdminRole((session?.user as { role?: string } | undefined)?.role);
-  const [menuOpen, setMenuOpen] = useState(false);
 
-  // Navigating must close the drawer. Without this, tapping a category leaves
-  // the panel sitting over the page it just loaded.
+  // `mounted` keeps the overlay in the DOM through its exit transition; `open`
+  // drives the transition. Unmounting on close would make it vanish on a frame.
+  const [mounted, setMounted] = useState(false);
+  const [open, setOpen] = useState(false);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const exitTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  function openMenu() {
+    clearTimeout(exitTimer.current);
+    setMounted(true);
+    // One frame between mounting and opening, so there is a closed state for
+    // the transition to start from.
+    requestAnimationFrame(() => setOpen(true));
+  }
+
+  function closeMenu() {
+    setOpen(false);
+    exitTimer.current = setTimeout(() => setMounted(false), 400);
+  }
+
+  // Any navigation closes the menu — otherwise tapping a link leaves the
+  // overlay sitting over the page it just loaded.
   useEffect(() => {
-    setMenuOpen(false);
+    if (mounted) closeMenu();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
-  // A drawer over a page that still scrolls behind it is the classic mobile
-  // menu bug. Cleanup restores the original value rather than clearing it, so
-  // this cannot fight another component that also locks scrolling.
+  // While open: no page scroll behind it, and Escape closes it and returns
+  // focus to the `+` that opened it.
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!open) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMenuOpen(false);
+      if (event.key !== "Escape") return;
+      closeMenu();
+      toggleRef.current?.focus();
     };
     window.addEventListener("keydown", onKeyDown);
 
@@ -60,164 +85,124 @@ export default function Navbar() {
       document.body.style.overflow = previous;
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [menuOpen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  useEffect(() => () => clearTimeout(exitTimer.current), []);
 
   if (pathname.startsWith("/admin")) return null;
 
-  // Sentence case at normal tracking for the nav itself. Wide-tracked caps read
-  // as couture formality; this is a shop you buy sweatpants from. The caps are
-  // saved for labels and buttons, where they do real work.
-  const linkClass = (href: string) => {
-    const [path] = href.split("?");
-    const active = pathname === path || (path !== "/" && pathname.startsWith(path));
-    return `text-[13px] transition-colors duration-200 ${
-      active ? "text-soft-800" : "text-soft-500 hover:text-soft-800"
-    }`;
-  };
+  const accountHref = session ? (isAdmin ? "/admin" : "/account") : "/login";
+  const accountLabel = session ? (isAdmin ? "Admin" : "Account") : "Sign in";
+
+  // Delays for the staggered entrance, so the list assembles top to bottom
+  // rather than appearing as one block.
+  let item = 0;
+  const delay = () => ({ "--item-delay": `${60 + item++ * 35}ms` }) as React.CSSProperties;
 
   return (
     <>
-      <header className="sticky top-0 z-50 border-b border-soft-200 bg-soft-50/90 backdrop-blur-md">
-        {/* Announcement ticker. Three claims rather than one, because the thing
-            a shopper in Accra most needs to know is whether this ships to them
-            and what they can pay with — and that is more than fits statically on
-            a phone. It scrolls rather than rotating on a timer: a marquee is
-            readable at a glance at any moment, where a fader is blank half the
-            time it is looked at. Stops entirely under reduced-motion. */}
-        <div className="overflow-hidden border-b border-soft-200/70 py-2">
-          <div className="marquee-track" aria-hidden>
-            {[0, 1].map((copy) => (
-              <span key={copy} className="flex shrink-0 items-center">
-                {TICKER.map((item) => (
-                  <span key={item} className="flex items-center">
-                    <span className="type-micro whitespace-nowrap px-6 text-soft-500">{item}</span>
-                    <span className="h-[3px] w-[3px] shrink-0 rounded-full bg-soft-300" />
-                  </span>
-                ))}
-              </span>
-            ))}
-          </div>
-          {/* The visual track is hidden from assistive tech because it is
-              duplicated and endlessly scrolling; this is the same content once,
-              in a form a screen reader can actually read. */}
-          <p className="sr-only">{TICKER.join(". ")}</p>
-        </div>
-
-        <nav className="mx-auto flex max-w-container items-center gap-4 px-5 py-4 sm:gap-8 sm:px-8 lg:px-10">
-          {/* Burger first on mobile, so the wordmark can stay optically centred
-              on a phone the way it does on the reference. */}
+      {/* z-70, above the menu overlay (z-60). A sticky element with a z-index
+          forms its own stacking context, so the `+` inside it can never rise
+          above the overlay on its own z-index — the whole header has to. The
+          header staying visible over the open menu is also the point: the
+          wordmark and bag remain where they were, and the `+` is the close. */}
+      <header className="sticky top-0 z-[70] bg-white">
+        <div className="relative mx-auto flex h-14 max-w-container items-center justify-between px-[var(--gutter)]">
+          {/* The `+` turns 45° into an `×` rather than swapping for a
+              different icon — the same object changing state reads as one
+              control, which is what it is. It sits above the overlay so it
+              stays reachable as the close button. */}
           <button
+            ref={toggleRef}
             type="button"
-            onClick={() => setMenuOpen(true)}
-            aria-label="Open menu"
-            aria-expanded={menuOpen}
-            className="-ml-2 p-2 text-soft-700 transition-opacity hover:opacity-60 sm:hidden"
+            onClick={() => (open ? closeMenu() : openMenu())}
+            aria-expanded={open}
+            aria-controls="site-menu"
+            aria-label={open ? "Close menu" : "Open menu"}
+            className="-ml-2 p-2 focus:outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-black"
           >
-            <svg width="18" height="12" viewBox="0 0 18 12" aria-hidden>
-              <path d="M0 1h18M0 6h18M0 11h18" stroke="currentColor" strokeWidth="1.2" fill="none" />
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              aria-hidden
+              className={`transition-transform duration-500 ease-apple-out ${open ? "rotate-45" : ""}`}
+            >
+              <path d="M8 0v16M0 8h16" stroke="currentColor" strokeWidth="1.2" fill="none" />
             </svg>
           </button>
 
-          <BrandMark className="shrink-0 transition-opacity duration-200 hover:opacity-60" />
+          <Link
+            href="/"
+            className="brand-wordmark absolute left-1/2 -translate-x-1/2 transition-opacity hover:opacity-50"
+          >
+            Vinx
+          </Link>
 
-          <div className="hidden items-center gap-7 sm:flex">
-            {SHOP_LINKS.map((link) => (
-              <Link key={link.href} href={link.href} className={linkClass(link.href)}>
-                {link.label}
-              </Link>
-            ))}
-          </div>
-
-          <div className="ml-auto flex items-center gap-5">
-            <Link
-              href={session ? (isAdmin ? "/admin" : "/account") : "/login"}
-              className={linkClass(session ? (isAdmin ? "/admin" : "/account") : "/login")}
-            >
-              <span className="inline-flex items-center gap-1.5">
-                <AccountIcon size={16} aria-hidden="true" />
-                <span className="hidden sm:inline">{session ? (isAdmin ? "Admin" : "Account") : "Account"}</span>
-              </span>
-            </Link>
-
-            <Link
-              href="/cart"
-              className={linkClass("/cart")}
-              aria-label={totalItems === 1 ? "Bag, 1 item" : `Bag, ${totalItems} items`}
-            >
-              <span className="inline-flex items-center gap-1.5">
-                <HandbagIcon size={16} aria-hidden="true" />
-                {/* `tabular-nums` so the header does not shift by a pixel as the
-                    count crosses from 9 to 10. */}
-                {totalItems > 0 && <span className="text-[13px] tabular-nums">{totalItems}</span>}
-              </span>
-            </Link>
-          </div>
-        </nav>
+          <Link
+            href="/cart"
+            aria-label={totalItems === 1 ? "Bag, 1 item" : `Bag, ${totalItems} items`}
+            className="-mr-2 flex items-center gap-1.5 p-2 transition-opacity hover:opacity-50"
+          >
+            <svg width="15" height="16" viewBox="0 0 15 16" fill="none" aria-hidden>
+              <path d="M1.5 5h12l-.9 10H2.4L1.5 5Z" stroke="currentColor" strokeWidth="1.1" />
+              <path d="M4.8 5V3.6a2.7 2.7 0 1 1 5.4 0V5" stroke="currentColor" strokeWidth="1.1" />
+            </svg>
+            {/* Only when there is something to count. A "0" is noise. */}
+            {totalItems > 0 && <span className="tabular-nums">{totalItems}</span>}
+          </Link>
+        </div>
       </header>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Mobile drawer                                                       */}
-      {/*                                                                     */}
-      {/* This did not exist. The category links were `hidden sm:flex`, so on a */}
-      {/* phone there was no way to reach a category at all — the only route   */}
-      {/* into the catalog was the hero button. That is a navigation bug       */}
-      {/* wearing a design problem's clothes.                                  */}
-      {/* ------------------------------------------------------------------ */}
-      {menuOpen && (
-        <div className="fixed inset-0 z-[60] sm:hidden">
-          <button
-            type="button"
-            aria-label="Close menu"
-            onClick={() => setMenuOpen(false)}
-            className="absolute inset-0 bg-soft-800/30 backdrop-blur-[2px]"
-          />
-
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Menu"
-            className="absolute inset-y-0 left-0 flex w-[85%] max-w-sm flex-col bg-soft-50 px-6 pb-8 pt-5"
-          >
-            <div className="flex items-center justify-between">
-              <BrandMark />
-              <button
-                type="button"
-                onClick={() => setMenuOpen(false)}
-                aria-label="Close menu"
-                className="-mr-2 p-2 text-soft-600 transition-opacity hover:opacity-60"
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
-                  <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.2" fill="none" />
-                </svg>
-              </button>
-            </div>
-
-            <p className="type-micro mt-12 text-soft-400">Shop</p>
-            <div className="mt-4 flex flex-col">
-              {SHOP_LINKS.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="type-d3 border-b border-soft-200 py-4 text-soft-800"
-                >
-                  {link.label}
-                </Link>
+      {mounted && (
+        // A disclosure, not a modal dialog: the control that closes it is the
+        // `+` in the header, outside this element. `aria-modal` would tell
+        // assistive tech that everything outside is inert — including the only
+        // close button.
+        <div
+          id="site-menu"
+          aria-label="Menu"
+          data-state={open ? "open" : "closed"}
+          className="menu-overlay fixed inset-0 z-[60] overflow-y-auto bg-white"
+        >
+          <nav className="mx-auto flex min-h-full max-w-container flex-col px-[var(--gutter)] pb-10 pt-24">
+            <ul className="space-y-3">
+              {SHOP.map((link) => (
+                <li key={link.href} data-menu-item style={delay()}>
+                  <Link href={link.href} className="type-label transition-opacity hover:opacity-40">
+                    {link.label}
+                  </Link>
+                </li>
               ))}
-            </div>
+            </ul>
 
-            <div className="mt-auto flex flex-col gap-4 pt-10">
-              <Link
-                href={session ? (isAdmin ? "/admin" : "/account") : "/login"}
-                className="type-micro text-soft-600"
-              >
-                {session ? (isAdmin ? "Admin" : "Account") : "Sign in"}
-              </Link>
-              <Link href="/cart" className="type-micro text-soft-600">
-                Bag {totalItems > 0 && `(${totalItems})`}
-              </Link>
-              <p className="type-micro mt-2 text-soft-400">Accra · GHS</p>
-            </div>
-          </div>
+            <ul className="mt-12 space-y-3">
+              <li data-menu-item style={delay()}>
+                <Link href={accountHref} className="type-label transition-opacity hover:opacity-40">
+                  {accountLabel}
+                </Link>
+              </li>
+              <li data-menu-item style={delay()}>
+                <Link href="/cart" className="type-label transition-opacity hover:opacity-40">
+                  Bag{totalItems > 0 && ` (${totalItems})`}
+                </Link>
+              </li>
+            </ul>
+
+            <ul className="mt-auto flex flex-wrap gap-x-6 gap-y-2 pt-16">
+              {HELP.map((link) => (
+                <li key={link.href} data-menu-item style={delay()}>
+                  <Link
+                    href={link.href}
+                    className="type-micro text-[var(--muted)] transition-colors hover:text-black"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
         </div>
       )}
     </>

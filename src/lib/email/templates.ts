@@ -139,3 +139,50 @@ ${trackingHtml}
 
   return { subject: `Your Vinx order has shipped (${reference})`, html, text };
 }
+
+export type VipReceiptData = {
+  customerName: string | null;
+  planLabel: string;
+  amount: number;
+  currency: string;
+  /** When the membership now runs until — after this payment is applied. */
+  vipUntil: Date;
+  siteUrl: string;
+};
+
+/**
+ * Receipt for a VIP payment. States the one fact a member needs — when their
+ * access now runs until — and, because nothing renews automatically, says so:
+ * a membership that quietly lapses should never surprise anyone.
+ */
+export function vipReceiptEmail(data: VipReceiptData): EmailMessage {
+  const greeting = data.customerName ? `Hello ${data.customerName},` : "Hello,";
+  const paid = formatPrice(data.amount, data.currency);
+  const until = data.vipUntil.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+
+  const html = shell(`
+<h1 style="margin:0 0 16px;font-size:22px;font-weight:400;">You are VIP</h1>
+<p style="margin:0 0 8px;font-size:14px;color:#4a453f;">${escapeHtml(greeting)}</p>
+<p style="margin:0 0 24px;font-size:14px;color:#4a453f;">You have early access to every Vinx drop until <strong>${escapeHtml(until)}</strong>.</p>
+<table style="width:100%;border-collapse:collapse;border-top:1px solid #e7e3df;">
+<tr><td style="padding:12px 0;font-size:14px;">VIP · ${escapeHtml(data.planLabel)}</td><td align="right" style="padding:12px 0;font-size:14px;">${escapeHtml(paid)}</td></tr>
+</table>
+<p style="margin:16px 0 28px;font-size:12px;color:#79736c;">This does not renew automatically. Buy another period any time from your account — it is added on to the end.</p>
+<a href="${escapeHtml(data.siteUrl)}/account#vip" style="display:inline-block;background:#121010;color:#ffffff;padding:12px 24px;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;">Your account</a>
+`);
+
+  const text = [
+    "You are VIP",
+    "",
+    greeting,
+    `You have early access to every Vinx drop until ${until}.`,
+    "",
+    `VIP · ${data.planLabel}  ${paid}`,
+    "",
+    "This does not renew automatically. Buy another period any time from your account — it is added on to the end.",
+    "",
+    `${data.siteUrl}/account#vip`
+  ].join("\n");
+
+  return { subject: `Vinx VIP — until ${until}`, html, text };
+}

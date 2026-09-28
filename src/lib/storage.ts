@@ -110,3 +110,81 @@ export async function getPresignedUploadUrl(originalFilename: string, contentTyp
 
   return { uploadUrl, publicUrl, key };
 }
+
+// ---------------------------------------------------------------------------
+// Customer uploads (profile photos)
+//
+// Product uploads go browser → bucket through a presigned PUT, which is fine
+// for admins and wrong for the public: a presigned PUT cannot cap its own size,
+// and anyone can create an account. A stranger could sign up and push
+// gigabytes into the bucket at the shop's expense. So customer uploads go
+// through the server, which reads the body, enforces a size limit, and checks
+// the file is really an image before anything is stored.
+// ---------------------------------------------------------------------------
+
+/** Profile photos are small. 2MB is generous for a square portrait. */
+export const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+
+const AVATAR_TYPES = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" } as const;
+export type AvatarType = keyof typeof AVATAR_TYPES;
+
+/**
+ * The image type a file actually is, read from its first bytes — or null.
+ *
+ * The declared Content-Type and the filename are both chosen by whoever sends
+ * the request, and neither is evidence of anything. Magic bytes are what the
+ * file is. A renamed HTML or SVG file (the classic way to get script onto a
+ * domain via an "image" upload) fails this and is never stored.
+ */
+export function sniffImageType(bytes: Uint8Array): AvatarType | null {
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  if (
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 &&
+    bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a
+  ) {
+    return "image/png";
+  }
+  if (
+    bytes.length >= 12 &&
+    bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 && // RIFF
+    bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50 // WEBP
+  ) {
+    return "image/webp";
+  }
+  return null;
+}
+
+export function buildAvatarKey(type: AvatarType): string {
+  return `avatars/${randomUUID()}.${AVATAR_TYPES[type]}`;
+}
+
+/** Matches exactly what buildAvatarKey produces. */
+export const AVATAR_KEY_PATTERN = /^avatars\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp)$/;
+
+/**
+ * Store bytes the server has already validated. S3 when configured; in
+ * development without a bucket, ./public/uploads — the same fallback product
+ * uploads use, and equally unavailable in production.
+ */
+export async function storeObject(key: string, bytes: Uint8Array, contentType: string): Promise<string> {
+  if (isS3Configured()) {
+    const bucket = process.env.S3_BUCKET;
+    if (!bucket) throw new Error("S3_BUCKET is not configured");
+    await getClient().send(
+      new PutObjectCommand({ Bucket: bucket, Key: key, Body: bytes, ContentType: contentType })
+    );
+    return `${process.env.S3_PUBLIC_URL_BASE?.replace(/\/$/, "")}/${key}`;
+  }
+
+  if (process.env.NODE_ENV !== "development") {
+    throw new Error("File storage is not configured. Set the S3_* variables.");
+  }
+
+  const { writeFile, mkdir } = await import("fs/promises");
+  const path = await import("path");
+  const destination = path.join(process.cwd(), "public", "uploads", key);
+  await mkdir(path.dirname(destination), { recursive: true });
+  await writeFile(destination, bytes);
+  return `/uploads/${key}`;
+}
