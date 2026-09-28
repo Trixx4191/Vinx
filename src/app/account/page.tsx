@@ -36,10 +36,10 @@ export default async function AccountPage() {
   const address = user.addresses[0];
 
   return (
-    <div className="page-enter mx-auto max-w-5xl">
+    <div className="mx-auto max-w-5xl">
       <header className="border-b border-soft-200 pb-6">
-        <Kicker>Vinx / Account</Kicker>
-        <Heading level={2} className="mt-4">
+        <Kicker>Account</Kicker>
+        <Heading level={1} size={2} className="mt-4">
           Your account.
         </Heading>
         <p className="mt-4 text-sm text-soft-500">A quiet record of your pieces and deliveries.</p>

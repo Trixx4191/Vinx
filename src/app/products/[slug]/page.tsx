@@ -10,6 +10,18 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       category: { select: { name: true, slug: true } },
       variants: {
         select: { id: true, size: true, color: true, colorHex: true, quantity: true, inStock: true, sku: true }
+      },
+      // On-model photography, if this product has any. Only the detail page
+      // loads these — a grid tile shows the flat product shot, so selecting
+      // model imagery for every card would be work nothing renders.
+      modelShots: {
+        orderBy: { sortOrder: "asc" },
+        select: {
+          id: true,
+          imageUrl: true,
+          sortOrder: true,
+          model: { select: { name: true, heightCm: true, wearingSize: true } }
+        }
       }
     }
   });

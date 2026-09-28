@@ -12,6 +12,7 @@ const navigation = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/orders", label: "Orders" },
   { href: "/admin/products", label: "Products" },
+  { href: "/admin/models", label: "Models" },
   { href: "/admin/restock", label: "Inventory" },
   { href: "/admin/staff", label: "Staff", superOnly: true },
   { href: "/admin/security", label: "Security" },
@@ -28,14 +29,17 @@ export default function AdminSidebar() {
     <aside className="border-b border-soft-200 pb-5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-8">
       <div className="flex items-center justify-between gap-4 lg:block">
         <div>
-          <p className="admin-kicker">Vinx / studio</p>
-          <p className="type-display mt-2 text-2xl text-soft-800">Admin</p>
+          {/* The wordmark, set like the storefront's, so the back office reads
+              as the same product rather than a second application that happens
+              to share a database. */}
+          <p className="brand-wordmark">Vinx</p>
+          <p className="admin-kicker mt-2">Studio</p>
         </div>
         <Link
           href="/"
-          className="text-[10px] font-medium uppercase tracking-[0.14em] text-soft-500 transition-colors hover:text-soft-700 lg:mt-10 lg:block"
+          className="type-micro text-soft-500 transition-colors hover:text-soft-800 lg:mt-10 lg:block"
         >
-          View storefront
+          View storefront ↗
         </Link>
       </div>
 

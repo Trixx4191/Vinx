@@ -99,12 +99,43 @@ const PRODUCTS: SeedProduct[] = [
   }
 ];
 
+// The shoot roster. Four people, both genders, which is the range the catalog
+// is designed around.
+//
+// Names are not unique in the schema — a three-to-five person roster does not
+// need an identity constraint, and a real name is not an identifier — so this
+// looks each one up before creating rather than upserting, which is what makes
+// re-running the seed idempotent.
+const MODELS: Array<{
+  name: string;
+  gender: string;
+  heightCm: number;
+  wearingSize: string;
+  displayOrder: number;
+}> = [
+  { name: "Ama", gender: "Women", heightCm: 172, wearingSize: "S", displayOrder: 1 },
+  { name: "Nadia", gender: "Women", heightCm: 178, wearingSize: "M", displayOrder: 2 },
+  { name: "Kofi", gender: "Men", heightCm: 185, wearingSize: "L", displayOrder: 3 },
+  { name: "Yaw", gender: "Men", heightCm: 179, wearingSize: "M", displayOrder: 4 }
+];
+
 async function main() {
   const categories = ["T-Shirts", "Hoodies", "Jackets", "Pants", "Accessories"];
 
   for (const name of categories) {
     const slug = name.toLowerCase().replace(/\s+/g, "-");
     await prisma.category.upsert({ where: { slug }, update: {}, create: { name, slug } });
+  }
+
+  for (const entry of MODELS) {
+    const existing = await prisma.model.findFirst({ where: { name: entry.name } });
+    if (existing) {
+      await prisma.model.update({ where: { id: existing.id }, data: entry });
+    } else {
+      await prisma.model.create({
+        data: { ...entry, referenceImageUrl: placeholder(`${entry.name} portrait`, "ece7e1") }
+      });
+    }
   }
 
   for (const entry of PRODUCTS) {
@@ -140,7 +171,31 @@ async function main() {
     });
   }
 
-  console.log(`Seeded ${PRODUCTS.length} products across ${categories.length} categories.`);
+  // One product gets an on-model shot, so the gallery's model slot and its
+  // caption are reachable from a fresh database rather than only after someone
+  // uploads real photography. These are placeholders standing in for images you
+  // produce outside Vinx and upload in the admin product form.
+  const hoodie = await prisma.product.findUnique({ where: { slug: "vinx-heavy-hoodie" } });
+  const kofi = await prisma.model.findFirst({ where: { name: "Kofi" } });
+
+  if (hoodie && kofi) {
+    await prisma.productModelShot.upsert({
+      // The unique pair is what makes re-seeding replace the shot rather than
+      // failing on a constraint or stacking duplicates.
+      where: { productId_modelId: { productId: hoodie.id, modelId: kofi.id } },
+      update: { imageUrl: placeholder(`Kofi in ${hoodie.name}`, "ddd6cd"), sortOrder: 0 },
+      create: {
+        productId: hoodie.id,
+        modelId: kofi.id,
+        imageUrl: placeholder(`Kofi in ${hoodie.name}`, "ddd6cd"),
+        sortOrder: 0
+      }
+    });
+  }
+
+  console.log(
+    `Seeded ${PRODUCTS.length} products across ${categories.length} categories, and ${MODELS.length} models.`
+  );
 }
 
 main()

@@ -10,5 +10,5 @@ export default async function AdminProductsPage() {
   const session = await getServerSession(authOptions);
   if (!isAdminRole((session?.user as { role?: string } | undefined)?.role)) redirect("/");
   const products = await prisma.product.findMany({ include: { category: { select: { name: true, slug: true } }, variants: true }, orderBy: { createdAt: "desc" } });
-  return <div><div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="type-micro text-soft-400">Catalog / inventory</p><h1 className="mt-2 type-display text-3xl text-soft-800">Products.</h1><p className="mt-2 text-sm text-soft-500">Manage what is visible, priced, and available.</p></div><Link href="/admin/products/new" className="btn-primary text-xs uppercase tracking-[0.1em]">Add product</Link></div><ProductsTable products={products} /></div>;
+  return <div><div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="admin-kicker">Catalog / inventory</p><h1 className="type-d3 mt-2 text-soft-800">Products.</h1><p className="mt-2 text-sm text-soft-500">Manage what is visible, priced, and available.</p></div><Link href="/admin/products/new" className="btn-primary text-xs uppercase tracking-[0.1em]">Add product</Link></div><ProductsTable products={products} /></div>;
 }

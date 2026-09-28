@@ -3,8 +3,9 @@ import Image from "next/image";
 import ProductCard from "@/components/ProductCard";
 import { prisma } from "@/lib/prisma";
 import { Product } from "@/types/product";
-import { Heading, Kicker, ProductGrid } from "@/components/luxury";
+import { ProductGrid, SectionHeader } from "@/components/luxury";
 import { firstExistingImage } from "@/lib/publicAsset";
+import { SITE } from "@/content/site";
 
 // Extensions here are honest: every one of these files is a JPEG. The previous
 // set was named .webp while actually containing JPEG data, which works — the
@@ -33,7 +34,7 @@ async function getFeaturedProducts(): Promise<Product[]> {
   try {
     return await prisma.product.findMany({
       where: { isPublished: true },
-      take: 4,
+      take: 8,
       orderBy: { createdAt: "desc" },
       include: {
         category: { select: { name: true, slug: true } },
@@ -67,58 +68,88 @@ export default async function HomePage() {
 
   return (
     <div className="flex flex-col">
-      {/* ---------------------------------------------------------------- */}
-      {/* Hero — full viewport, edge to edge                                */}
-      {/* ---------------------------------------------------------------- */}
-      {/* -mt-6 cancels the `pt-6` the app shell puts on <main>. That padding is
-          right for every other page, but a hero has to sit flush against the
-          header — a strip of white above a full-bleed image reads as a mistake. */}
-      <section className="bleed relative -mt-6 h-[88vh] min-h-[560px] overflow-hidden bg-soft-800">
+      {/* ================================================================== */}
+      {/* Hero                                                                */}
+      {/* ================================================================== */}
+      {/* `-mt-6` cancels the `pt-6` the app shell puts on <main>. That padding
+          is right for every other page, but a hero has to sit flush under the
+          header — a strip of bone above a full-bleed image reads as a mistake.
+
+          Height is `svh`, not `vh`. On mobile Safari `vh` is measured against
+          the viewport with the toolbars hidden, so a 88vh hero is taller than
+          the screen on load and its bottom line — the one carrying the buttons —
+          sits under the browser chrome until you scroll. */}
+      <section className="bleed relative -mt-6 flex h-[86svh] min-h-[540px] flex-col justify-end overflow-hidden bg-soft-200">
         {/* Rendered as an <Image> rather than a CSS background so Next serves a
             size appropriate to the viewport and can prioritise it as the LCP
-            element. It is also scoped to the hero: as a fixed page-wide
-            backdrop the same photograph sat behind the product grid and the
-            editorial copy, where near-black text on a photograph is a
-            legibility problem rather than a design. */}
+            element. It is also scoped to the hero: as a fixed page-wide backdrop
+            the same photograph sat behind the product grid and the editorial
+            copy, where near-black text on a photograph is a legibility problem
+            rather than a design. */}
         {heroImage && (
           <Image src={heroImage} alt="" fill priority sizes="100vw" className="object-cover" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/10 to-black/50" />
 
-        <div className="relative flex h-full flex-col justify-between p-5 sm:p-8">
-          <div className="flex items-start justify-between text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.55)]">
-            <span className="type-micro">Vinx / Collection 001</span>
-            <span className="type-micro hidden sm:block">Fall — Winter</span>
-          </div>
+        {/* A single bottom-weighted scrim instead of the previous three-stop
+            top-and-bottom gradient. That one dimmed the middle of the
+            photograph — the part with the garment in it — to protect text that
+            only ever sits at the bottom. This darkens only where the type is. */}
+        <div
+          aria-hidden
+          className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/60 via-black/25 to-transparent"
+        />
 
-          <div className="pb-16 text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.55)] sm:pb-24">
-            <h1 className="type-display max-w-4xl text-4xl leading-[0.98] sm:text-6xl lg:text-7xl">
-              The new collection
-            </h1>
+        {/* The shadow sits on the type itself, not on this wrapper. The scrim
+            alone was not enough over a pale garment — the eyebrow at 70% white
+            on a light knit dropped below a comfortable contrast ratio — and
+            deepening the scrim would have fixed it by dimming the photograph.
+            A shadow protects the type locally and leaves the image alone.
 
-            <div className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-3">
-              <Link
-                href="/products"
-                className="type-micro border border-white px-6 py-3 text-white transition-colors duration-500 hover:bg-white hover:text-black"
-              >
-                Discover
-              </Link>
-              <Link href="/products" className="type-micro text-white/80 transition-colors hover:text-white">
-                For her
-              </Link>
-              <Link href="/products" className="type-micro text-white/80 transition-colors hover:text-white">
-                For him
-              </Link>
-            </div>
+            Scoped to the two text elements rather than the block, because the
+            buttons below are solid fills and a text shadow inside a white
+            button reads as a printing fault. */}
+        <div className="relative px-5 pb-12 sm:px-8 sm:pb-16 lg:px-10">
+          <p className="type-micro text-white/85 [text-shadow:0_1px_10px_rgba(0,0,0,0.55)]">
+            Collection 001 · Fall — Winter
+          </p>
+
+          {/* `text-balance` via the global h1 rule, so the two lines break
+              evenly rather than leaving one word alone on the second. */}
+          <h1 className="type-d1 mt-4 max-w-[13ch] text-white [text-shadow:0_2px_24px_rgba(0,0,0,0.4)]">
+            The new collection
+          </h1>
+
+          <div className="mt-8 flex flex-wrap items-center gap-3 sm:gap-4">
+            <Link
+              href="/products"
+              className="type-micro bg-soft-50 px-8 py-4 text-soft-800 transition-colors duration-300 hover:bg-white"
+            >
+              Shop all
+            </Link>
+            <Link
+              href="/products?category=hoodies"
+              className="type-micro border border-white/60 px-8 py-4 text-white transition-colors duration-300 hover:bg-white hover:text-soft-800"
+            >
+              Hoodies
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* ---------------------------------------------------------------- */}
-      {/* Categories — floating square cards over the hero edge             */}
-      {/* ---------------------------------------------------------------- */}
+      {/* ================================================================== */}
+      {/* Categories                                                          */}
+      {/* ================================================================== */}
+      {/* Flush against the hero and each other, full-bleed, no gaps and no
+          shadows. These were floating rounded cards with a drop shadow pulled up
+          over the hero edge — which is a 2019 dashboard pattern, and the shadow
+          was doing the work a photograph should do. Butted tall portrait tiles
+          read as one continuous run of imagery, which is the whole effect.
+
+          A 1px gap, not 0: at exactly 0 a fractional layout width lets the
+          background show as a hairline between tiles on some zoom levels, and a
+          deliberate hairline looks intentional where an accidental one does not. */}
       {categories.length > 0 && (
-        <section className="bleed relative z-10 -mt-12 grid max-w-5xl grid-cols-2 gap-3 px-5 sm:-mt-16 sm:gap-5 sm:px-8 lg:-mt-20 lg:grid-cols-4 lg:px-0">
+        <section className="bleed grid grid-cols-2 gap-px bg-soft-200 lg:grid-cols-4">
           {categories.map((category, index) => {
             const tileImage = firstExistingImage(
               HOME_IMAGES.categories[index % HOME_IMAGES.categories.length]
@@ -128,7 +159,7 @@ export default async function HomePage() {
               <Link
                 key={category.slug}
                 href={`/products?category=${category.slug}`}
-                className="group relative aspect-square overflow-hidden rounded-lg bg-soft-200 shadow-[0_3px_16px_rgba(20,24,20,0.06)] transition-shadow duration-500 hover:shadow-[0_8px_24px_rgba(20,24,20,0.1)]"
+                className="group relative aspect-[4/5] overflow-hidden bg-soft-100 lg:aspect-[3/4]"
               >
                 {/* A tile whose photograph is missing falls back to the plain
                     ground above, which still carries its label and stays
@@ -139,16 +170,25 @@ export default async function HomePage() {
                     alt=""
                     fill
                     sizes="(max-width: 1024px) 50vw, 25vw"
-                    className="object-cover saturate-[0.9] transition-transform duration-[900ms] ease-apple group-hover:scale-[1.035] group-hover:saturate-100"
+                    className="object-cover transition-transform duration-700 ease-apple-out group-hover:scale-[1.04]"
                   />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent transition-opacity duration-500 group-hover:opacity-90" />
+                <div
+                  aria-hidden
+                  className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/55 to-transparent"
+                />
 
-                <span className="type-micro absolute right-4 top-4 text-white/70">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <span className="type-micro absolute bottom-5 left-5 text-white transition-transform duration-700 group-hover:translate-x-1">
+                <span className="type-micro absolute bottom-5 left-5 right-5 flex items-center justify-between text-white">
                   {category.name}
+                  {/* An arrow that slides on hover, rather than the label
+                      itself moving. Moving the text nudges the whole tile's
+                      composition; moving a 10px glyph reads as a response. */}
+                  <span
+                    aria-hidden
+                    className="translate-x-0 opacity-60 transition-transform duration-500 ease-apple-out group-hover:translate-x-1 group-hover:opacity-100"
+                  >
+                    →
+                  </span>
                 </span>
               </Link>
             );
@@ -156,24 +196,19 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* ---------------------------------------------------------------- */}
-      {/* Selected pieces                                                   */}
-      {/* ---------------------------------------------------------------- */}
-      <section className="mt-24 sm:mt-36">
-        <div className="flex items-end justify-between gap-6 border-b border-soft-200 pb-6">
-          <div>
-            <Kicker>Selected pieces</Kicker>
-            <Heading level={2} className="mt-4">
-              Quiet forms.
-            </Heading>
-          </div>
-          <Link
-            href="/products"
-            className="type-micro shrink-0 pb-1 text-soft-500 transition-colors hover:text-soft-800"
-          >
-            View all
-          </Link>
-        </div>
+      {/* ================================================================== */}
+      {/* Selected pieces                                                     */}
+      {/* ================================================================== */}
+      <section className="section-gap">
+        <SectionHeader
+          kicker="Selected pieces"
+          title="Quiet forms."
+          action={
+            <Link href="/products" className="type-micro text-soft-500 transition-colors hover:text-soft-800">
+              View all
+            </Link>
+          }
+        />
 
         {products.length > 0 ? (
           <ProductGrid columns={4} className="mt-10">
@@ -181,22 +216,26 @@ export default async function HomePage() {
               <ProductCard
                 key={product.id}
                 product={product}
+                // Only the first row is prioritised. Marking all eight as
+                // priority tells the browser everything is urgent, which is the
+                // same as telling it nothing is — the four below the fold
+                // compete with the four above for the same connections.
                 priority={index < 4}
                 mockupSrc={PRODUCT_MOCKUPS[product.category.slug] ?? PRODUCT_MOCKUPS["t-shirts"]}
               />
             ))}
           </ProductGrid>
         ) : (
-          <p className="mt-10 py-20 text-center text-sm text-soft-400">
+          <p className="mt-10 py-24 text-center text-sm text-soft-400">
             The first pieces are almost here.
           </p>
         )}
       </section>
 
-      {/* ---------------------------------------------------------------- */}
-      {/* Editorial split                                                   */}
-      {/* ---------------------------------------------------------------- */}
-      <section className="mt-24 grid gap-10 sm:mt-36 lg:grid-cols-2 lg:items-center lg:gap-20">
+      {/* ================================================================== */}
+      {/* Editorial split                                                     */}
+      {/* ================================================================== */}
+      <section className="section-gap grid gap-10 lg:grid-cols-2 lg:items-center lg:gap-20">
         <div className="relative aspect-[4/5] overflow-hidden bg-soft-100">
           {editorialImage && (
             <Image
@@ -204,26 +243,59 @@ export default async function HomePage() {
               alt=""
               fill
               sizes="(max-width: 1024px) 100vw, 50vw"
-              className="object-cover grayscale"
+              // Grayscale was flattening the one warm photograph on the page
+              // into the same tone as the ground it sits on. A slight
+              // desaturation keeps it editorial without erasing it.
+              className="object-cover saturate-[0.85]"
             />
           )}
         </div>
 
-        <div className="max-w-md">
-          <Kicker>The Vinx approach</Kicker>
-          <Heading level={2} className="mt-4">
-            Made for the in-between.
-          </Heading>
-          <p className="mt-6 text-sm leading-relaxed text-soft-500">
+        <div className="max-w-copy">
+          <p className="type-micro text-soft-400">The Vinx approach</p>
+          <h2 className="type-d2 mt-4 text-soft-800">Made for the in-between.</h2>
+          <p className="type-body mt-6">
             Quiet pieces with enough structure to carry the day, and enough softness to let it move
             around you. Cut once, properly, from cloth chosen to age rather than fade.
           </p>
-          <Link
-            href="/products"
-            className="type-micro mt-8 inline-block border-b border-soft-800 pb-1 text-soft-800 transition-opacity hover:opacity-50"
-          >
+          <Link href="/products" className="btn-quiet mt-8">
             Explore the collection
           </Link>
+        </div>
+      </section>
+
+      {/* ================================================================== */}
+      {/* Service band                                                        */}
+      {/* ================================================================== */}
+      {/* The three things a shopper wants to know before they add anything to a
+          bag, on the page rather than buried in the footer. Each links to the
+          page that explains it, so this is navigation and not decoration. */}
+      <section className="section-gap rule-top pt-12">
+        <div className="grid gap-10 sm:grid-cols-3">
+          {[
+            {
+              href: "/delivery",
+              title: "Delivery",
+              body: `Free in ${SITE.city} over the order threshold. ${SITE.delivery.accra} locally, ${SITE.delivery.international} international.`
+            },
+            {
+              href: "/returns",
+              title: "Returns",
+              body: `${SITE.returns.windowDays} days from delivery. Try things on — that is what the window is for.`
+            },
+            {
+              href: "/size-guide",
+              title: "Fit",
+              body: "Body measurements, not garment ones. Where a piece is shown on a model, the caption gives their height and size."
+            }
+          ].map((item) => (
+            <Link key={item.href} href={item.href} className="group block">
+              <p className="type-micro text-soft-400">{item.title}</p>
+              <p className="type-body mt-3 text-soft-600 transition-colors group-hover:text-soft-800">
+                {item.body}
+              </p>
+            </Link>
+          ))}
         </div>
       </section>
     </div>

@@ -6,6 +6,7 @@ import {
   totalStock,
   productMedia,
   isNewArrival,
+  modelShotCaption,
   type Product
 } from "@/types/product";
 
@@ -188,5 +189,132 @@ describe("productMedia", () => {
   it("treats an absent gallery the same as an empty one", () => {
     assert.equal(productMedia(makeProduct({ galleryImages: undefined })).length, 2);
     assert.equal(productMedia(makeProduct({ galleryImages: [] })).length, 2);
+  });
+
+  /**
+   * A garment on a body is what a shopper looks at first, so the on-model shot
+   * leads. The flat front image answers "what is it"; the model shot answers
+   * "what does it look like worn".
+   */
+  it("puts model shots ahead of the flat product shots", () => {
+    const media = productMedia(
+      makeProduct({
+        modelShots: [{ imageUrl: "https://cdn.vinx.com/kofi.png", model: { name: "Kofi" } }]
+      })
+    );
+
+    assert.equal(media.length, 3);
+    assert.equal(media[0].src, "https://cdn.vinx.com/kofi.png");
+    assert.equal(media[1].src, "https://cdn.vinx.com/front.png");
+  });
+
+  // Ordering is the admin's, not the database's insertion order.
+  it("orders model shots by sortOrder, not by array position", () => {
+    const media = productMedia(
+      makeProduct({
+        modelShots: [
+          { imageUrl: "https://cdn.vinx.com/second.png", sortOrder: 2, model: { name: "Ama" } },
+          { imageUrl: "https://cdn.vinx.com/first.png", sortOrder: 1, model: { name: "Kofi" } }
+        ]
+      })
+    );
+
+    assert.equal(media[0].src, "https://cdn.vinx.com/first.png");
+    assert.equal(media[1].src, "https://cdn.vinx.com/second.png");
+  });
+
+  // Sorting must not mutate the product it was handed — the detail page derives
+  // this inside a useMemo over the same object it renders from.
+  it("does not reorder the product's own modelShots array", () => {
+    const shots = [
+      { imageUrl: "https://cdn.vinx.com/b.png", sortOrder: 2, model: { name: "Ama" } },
+      { imageUrl: "https://cdn.vinx.com/a.png", sortOrder: 1, model: { name: "Kofi" } }
+    ];
+    productMedia(makeProduct({ modelShots: shots }));
+    assert.equal(shots[0].imageUrl, "https://cdn.vinx.com/b.png");
+  });
+
+  it("captions a model slot and leaves the flat shots uncaptioned", () => {
+    const media = productMedia(
+      makeProduct({
+        modelShots: [
+          { imageUrl: "https://cdn.vinx.com/kofi.png", model: { name: "Kofi", heightCm: 185, wearingSize: "L" } }
+        ]
+      })
+    );
+
+    assert.equal(media[0].caption, "On Kofi · 185cm · wearing L");
+    assert.equal(media[1].caption, undefined);
+  });
+
+  it("names the model in a model slot's alt text", () => {
+    const media = productMedia(
+      makeProduct({ modelShots: [{ imageUrl: "https://cdn.vinx.com/k.png", model: { name: "Kofi" } }] })
+    );
+    assert.ok(media[0].alt.includes("Kofi"));
+    assert.ok(media[0].alt.includes("Classic Tee"));
+  });
+
+  it("treats absent model shots the same as an empty list", () => {
+    assert.equal(productMedia(makeProduct({ modelShots: undefined })).length, 2);
+    assert.equal(productMedia(makeProduct({ modelShots: [] })).length, 2);
+  });
+
+  // The video is postered with the flat front image rather than whatever slot
+  // happens to be first, which model shots now change.
+  it("still posters the video with the front image when model shots lead", () => {
+    const media = productMedia(
+      makeProduct({
+        hoverVideoUrl: "https://cdn.vinx.com/clip.mp4",
+        modelShots: [{ imageUrl: "https://cdn.vinx.com/kofi.png", model: { name: "Kofi" } }]
+      })
+    );
+
+    const last = media[media.length - 1];
+    assert.equal(last.kind, "video");
+    if (last.kind === "video") assert.equal(last.poster, "https://cdn.vinx.com/front.png");
+  });
+});
+
+describe("modelShotCaption", () => {
+  /**
+   * This line is the whole reason a model is a database record rather than just
+   * another image URL. "Kofi is 185cm and wearing L" tells a shopper more about
+   * fit than a size chart does, and it is the one thing the photograph cannot
+   * say for itself.
+   */
+  it("reads as a sentence when everything is known", () => {
+    assert.equal(
+      modelShotCaption({ name: "Kofi", heightCm: 185, wearingSize: "L" }),
+      "On Kofi · 185cm · wearing L"
+    );
+  });
+
+  it("omits missing parts rather than leaving empty segments", () => {
+    assert.equal(modelShotCaption({ name: "Ama" }), "On Ama");
+    assert.equal(modelShotCaption({ name: "Ama", heightCm: 172 }), "On Ama · 172cm");
+    assert.equal(modelShotCaption({ name: "Ama", wearingSize: "S" }), "On Ama · wearing S");
+  });
+
+  it("treats null the same as absent, since that is what the database stores", () => {
+    assert.equal(modelShotCaption({ name: "Ama", heightCm: null, wearingSize: null }), "On Ama");
+  });
+
+  /**
+   * A stored 0 is a data error, not a height. Rendering "0cm" next to a garment
+   * looks like a bug to a shopper — because it is one — so it is dropped rather
+   * than displayed.
+   */
+  it("drops a nonsensical height instead of printing it", () => {
+    assert.equal(modelShotCaption({ name: "Ama", heightCm: 0 }), "On Ama");
+    assert.equal(modelShotCaption({ name: "Ama", heightCm: -5 }), "On Ama");
+  });
+
+  it("ignores a size that is only whitespace", () => {
+    assert.equal(modelShotCaption({ name: "Ama", wearingSize: "   " }), "On Ama");
+  });
+
+  it("never returns an empty string, so the caption slot is never blank text", () => {
+    assert.notEqual(modelShotCaption({ name: "Ama" }).trim(), "");
   });
 });

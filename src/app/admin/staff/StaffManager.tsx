@@ -94,7 +94,7 @@ export default function StaffManager({
         </p>
       )}
 
-      <section className="glass rounded-3xl p-5 sm:p-7">
+      <section className="admin-panel p-5 sm:p-7">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="admin-kicker">Current staff</p>

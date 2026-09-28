@@ -2,38 +2,73 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+   TOKENS
+   Everything the look is made of lives here. Components consume these and the
+   Tailwind `soft` ramp; nothing hard-codes a colour, a tracking or a section
+   gap of its own.
+   ============================================================================ */
+
 :root {
-  /* A warm off-white rather than pure white. Product photography on a true
-     white ground reads as a catalogue sheet; a few degrees of warmth reads as
-     a lookbook, and it is the single change that does most to move this away
-     from a stark modernist storefront. */
-  --bg: #faf9f8;
-  --fg: #121010;
-  --muted: #79736c;
-  --glass: #ffffff;
-  --glass-border: #e7e3df;
-  --accent: #121010;
+  /* --- Ground -------------------------------------------------------------
+     Bone rather than white, and warmer than the previous off-white. Product
+     photography on a true white ground reads as a catalogue sheet; a few
+     degrees of warmth reads as a lookbook. The reference storefront sits on a
+     sand ground for the same reason it shoots on one — it flatters skin and
+     knitwear, where a cold grey makes both look grey too. */
+  --bg: #faf8f6;
+  --fg: #16130f;
+  --muted: #7d7267;
 
-  /* The ground behind a product shot. Deliberately a step darker than the page
-     so a tile reads as an object on the page rather than a hole in it. */
-  --product-ground: #f0edea;
+  /* The ground behind a product shot: one step darker than the page, so a tile
+     reads as an object on the page rather than a hole in it. */
+  --product-ground: #efe9e2;
 
-  /* Display type still pulls in, but labels are tracked far less than before.
-     Wide-tracked micro-caps read as couture formality; at this spacing the
-     same label reads as a garment tag, which is the register here. */
-  --track-display: -0.02em;
+  /* A surface that needs to lift off the ground — admin panels, the cart
+     summary. On the storefront almost nothing does. */
+  --surface: #ffffff;
+  --hairline: #e8e1d9;
+
+  /* --- Type ---------------------------------------------------------------
+     Two treatments of one grotesque, and the contrast between them is the
+     whole system. Display pulls in: negative tracking is what stops a large
+     grotesque from looking like a system font. Micro pushes out: wide-tracked
+     caps for eyebrows, labels, nav and buttons.
+
+     Micro tracking is 0.08em, not the 0.16em+ this started at. Very wide caps
+     read as couture formality; at this spacing the same label reads as a
+     garment tag, which is the register for a brand that sells sweatpants. */
+  --track-display: -0.022em;
   --track-micro: 0.08em;
+
+  /* A fluid scale, so headings stop being an ad-hoc pile of
+     `text-4xl sm:text-6xl lg:text-7xl` at every call site. clamp() also means
+     the middle of the range is interpolated rather than jumping at a
+     breakpoint, which is where those stacks tend to look broken. */
+  --display-1: clamp(2.5rem, 7.5vw, 5.5rem);
+  --display-2: clamp(1.875rem, 4.2vw, 3.25rem);
+  --display-3: clamp(1.375rem, 2.4vw, 1.875rem);
+
+  /* --- Rhythm -------------------------------------------------------------
+     One section gap for the whole site. Airiness is most of what separates a
+     storefront that feels considered from one that feels cramped, and it only
+     works if it is consistent. */
+  --section-gap: clamp(4.5rem, 10vw, 9rem);
+
+  /* Motion. Long and eased-out: fashion sites move slowly, and the same
+     duration everywhere is what keeps that from reading as lag. */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 html {
   scroll-behavior: smooth;
   /* `clip`, not `hidden`, and this matters: the full-bleed rule below sizes
-     elements to 100vw, which counts the vertical scrollbar and so overflows
-     the content box by a few pixels on any platform that shows scrollbars
+     elements to 100vw, which counts the vertical scrollbar and so overflows the
+     content box by a few pixels on any platform that shows scrollbars
      permanently. Both values contain that overflow, but `overflow: hidden` on
-     an ancestor silently kills `position: sticky` inside it — which would
-     break the site header. `clip` contains the overflow without creating a
-     scroll container, so sticky keeps working. */
+     an ancestor silently kills `position: sticky` inside it — which would break
+     the site header. `clip` contains the overflow without creating a scroll
+     container, so sticky keeps working. */
   overflow-x: clip;
 }
 
@@ -41,14 +76,19 @@ body {
   color: var(--fg);
   background: var(--bg);
   font-family: var(--font-grotesque), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  /* Optical sizing and a touch of tightening on the whole page. Archivo is a
+     grotesque in the Helvetica lineage; at default tracking it sets a little
+     loose for body copy at these sizes. */
+  letter-spacing: -0.004em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
 }
 
 /* Headings are the same grotesque as body text, differentiated by size and
-   tracking rather than by a second family. Weight stays light: at display
-   sizes a bold grotesque reads as a sale banner, not a collection. */
+   tracking rather than by a second family — which is also one less font file to
+   ship, and bandwidth is not free for every shopper. Weight stays at 400: at
+   display sizes a bold grotesque reads as a sale banner, not a collection. */
 h1,
 h2,
 h3,
@@ -57,19 +97,29 @@ h4 {
   font-weight: 400;
   letter-spacing: var(--track-display);
   line-height: 1.02;
+  text-wrap: balance;
+}
+
+/* Paragraphs get `pretty` rather than `balance`: balancing a long paragraph
+   makes its last lines ragged, while `pretty` only prevents orphans. */
+p {
+  text-wrap: pretty;
 }
 
 .brand-wordmark {
   display: inline-block;
   color: var(--fg);
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 0.88rem;
-  font-weight: 800;
-  letter-spacing: 0.18em;
+  /* Set apart from the body face on purpose — the wordmark is a mark, not
+     running text, and it holds its own weight and tracking regardless of what
+     the body face becomes later. */
+  font-family: var(--font-grotesque), Arial, Helvetica, sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
   line-height: 1;
+  text-transform: uppercase;
 }
 
-/* Continuous soft background layer that carries across pages */
 .bg-layer {
   position: fixed;
   inset: 0;
@@ -79,166 +129,164 @@ h4 {
 }
 
 /* The homepage hero was briefly a fixed, page-wide CSS background here. It has
-   moved into the hero section as a next/image element, for three reasons:
-   a background image gets none of Next's sizing or format negotiation and
-   cannot be the prioritised LCP element; spanning the whole page put the
-   photograph behind the product grid and the editorial copy, where near-black
-   text on a photograph stops being legible; and `background-attachment: fixed`
-   is ignored outright by iOS Safari while causing repaint jank elsewhere, so
-   the parallax it was buying did not survive the trip to a phone. */
+   moved into the hero section as a next/image element, for three reasons: a
+   background image gets none of Next's sizing or format negotiation and cannot
+   be the prioritised LCP element; spanning the whole page put the photograph
+   behind the product grid and the editorial copy, where near-black text on a
+   photograph stops being legible; and `background-attachment: fixed` is ignored
+   outright by iOS Safari while causing repaint jank elsewhere, so the parallax
+   it was buying did not survive the trip to a phone. */
 
-body:has(.signup-page) .bg-layer {
-  background: var(--bg);
-}
-
-/* iOS-style glass surface */
 @layer components {
-  .glass {
-    background: var(--glass);
-    border: 1px solid var(--glass-border);
-    box-shadow: none;
-    border-radius: 0;
+  /* ==========================================================================
+     SURFACES
+
+     The storefront is deliberately surface-less: content sits directly on the
+     ground, separated by space and the occasional hairline rather than by
+     boxes. Borders and drop shadows around every group are what make a fashion
+     site look like a dashboard.
+
+     Gone from here: `.glass`, `.glass-strong`, `.hero-glass` and `.card-soft`.
+     All four were left over from an iOS-glass iteration that the system moved
+     away from years of edits ago; by the end each had been flattened to "white
+     box with a hairline" and three of them had no callers at all. The admin's
+     panels — the one place a surface is still the right answer — are now
+     `.admin-panel`, which says what it is.
+     ========================================================================== */
+
+  /* A group on the storefront: separated by a rule above it, not enclosed. */
+  .rule-top {
+    border-top: 1px solid var(--hairline);
   }
 
-  .glass-strong {
-    background: #ffffff;
-    border: 1px solid var(--glass-border);
-    box-shadow: none;
-    border-radius: 0;
-  }
+  /* ==========================================================================
+     BUTTONS
 
+     Square, tracked caps, full-width on mobile by default at the call site.
+     The primary is near-black rather than pure black: pure black against a warm
+     bone ground reads as a hole punched in the page.
+     ========================================================================== */
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-none bg-soft-700 px-6 py-3 text-xs font-medium uppercase tracking-[0.14em] text-white
-      transition-colors duration-300 hover:bg-black
-      focus:outline-none focus-visible:ring-1 focus-visible:ring-soft-700 focus-visible:ring-offset-2;
+    @apply inline-flex items-center justify-center gap-2 rounded-none bg-soft-700 px-7 py-4 text-[11px] font-medium uppercase tracking-[0.1em] text-soft-50
+      transition-colors duration-300
+      hover:bg-soft-800
+      focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-soft-700
+      disabled:cursor-not-allowed disabled:bg-soft-200 disabled:text-soft-400;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center rounded-none border border-soft-300 bg-transparent px-6 py-3 text-xs font-medium uppercase tracking-[0.14em] text-soft-700
-      transition-colors duration-300 hover:bg-soft-700 hover:text-white
-      focus:outline-none focus-visible:ring-1 focus-visible:ring-soft-400 focus-visible:ring-offset-2;
+    @apply inline-flex items-center justify-center gap-2 rounded-none border border-soft-300 bg-transparent px-7 py-4 text-[11px] font-medium uppercase tracking-[0.1em] text-soft-700
+      transition-colors duration-300
+      hover:border-soft-700 hover:bg-soft-700 hover:text-soft-50
+      focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-soft-700
+      disabled:cursor-not-allowed disabled:opacity-40;
   }
 
-  .input-soft {
-    @apply w-full rounded-none border-0 border-b border-soft-300 bg-transparent px-1 py-3 text-sm text-soft-700
+  /* A third, quieter action: an underlined link that still reads as a control.
+     Most "secondary" actions on a fashion site are this, not an outlined box. */
+  .btn-quiet {
+    @apply inline-flex items-center gap-1.5 border-b border-soft-400 pb-1 text-[11px] font-medium uppercase tracking-[0.1em] text-soft-700
       transition-colors duration-300
+      hover:border-soft-800 hover:text-soft-800
+      focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-soft-700;
+  }
+
+  /* ==========================================================================
+     FORMS
+
+     Underline fields, not boxes. A page of boxed inputs is the single thing
+     that most makes a storefront look like admin software. The underline
+     thickens and darkens on focus, so the focus state is unmistakable without
+     a ring.
+     ========================================================================== */
+  .input-soft {
+    @apply w-full rounded-none border-0 border-b border-soft-300 bg-transparent px-0 py-3 text-[15px] text-soft-800
+      transition-colors duration-200
       placeholder:text-soft-400
-      focus:border-soft-700 focus:bg-transparent focus:outline-none focus:ring-0;
+      focus:border-soft-800 focus:bg-transparent focus:outline-none focus:ring-0
+      disabled:text-soft-400;
+  }
+
+  /* A select cannot be styled as a bare underline in every engine without
+     losing its arrow, so it keeps the underline and gets an explicit chevron. */
+  .select-soft {
+    @apply w-full appearance-none rounded-none border-0 border-b border-soft-300 bg-transparent py-3 pl-0 pr-7 text-[15px] text-soft-800
+      transition-colors duration-200
+      focus:border-soft-800 focus:outline-none focus:ring-0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%237d7267' stroke-width='1.2'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.15rem center;
+    background-size: 0.7rem;
   }
 
   .field-label {
-    @apply mb-1.5 block text-xs font-medium uppercase tracking-wider text-soft-400;
+    @apply mb-1 block text-[10px] font-medium uppercase tracking-[0.12em] text-soft-400;
   }
 
-  .card-soft {
-    @apply rounded-none border border-soft-300 bg-white
-      transition-colors duration-300
-      hover:border-soft-700;
-  }
+  /* ==========================================================================
+     PRODUCT MEDIA
+     ========================================================================== */
 
-  .page-enter {
-    animation: slideUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  }
-
-  /* The frame a product shot sits in. No border: in a gapless grid the tiles
-     are separated by the ground itself, and outlining each one would draw a
-     cage over what should read as a continuous sheet of photography. */
+  /* The frame a product shot sits in. No border: in a near-gapless grid the
+     tiles are separated by the ground itself, and outlining each one would draw
+     a cage over what should read as a continuous sheet of photography. */
   .product-stage {
     @apply relative overflow-hidden rounded-none;
     background: var(--product-ground);
   }
 
-  .hero-glass {
-    background: #e8e8e5;
-    border: 0;
-    box-shadow: none;
+
+
+  /* ==========================================================================
+     ADMIN
+
+     The admin is the same brand and a different problem. The storefront is
+     surface-less because content there is meant to be looked at; the admin is a
+     dense back-office where a person is scanning, comparing and typing, and
+     grouping fields into panels is what makes that legible. So panels stay —
+     but flat, square and hairline, in the same warm neutrals, so it reads as the
+     same product rather than a second application.
+     ========================================================================== */
+
+  /* Replaces the `admin-panel` / `admin-panel` pairs that were
+     scattered across twenty call sites. The radius in those was already a
+     no-op — the blanket `.rounded-*` override below flattens them to 0 — so the
+     markup was describing a rounded panel the screen never drew. */
+  .admin-panel {
+    @apply rounded-none border border-soft-200 bg-white p-5 sm:p-6;
+  }
+
+  /* A panel that is a link. No lift, no shadow: a card that rises under the
+     cursor is the dashboard gesture this system spent the storefront removing,
+     and it is no more appropriate here. The border does the work. */
+  .admin-panel-link {
+    @apply admin-panel block transition-colors duration-200 hover:border-soft-400;
   }
 
   .admin-shell {
     position: relative;
   }
 
-  .admin-shell::before {
-    content: "";
-    position: absolute;
-    left: -1rem;
-    top: 0;
-    bottom: 0;
-    width: 1px;
-    background: linear-gradient(180deg, rgba(126, 129, 117, 0), rgba(126, 129, 117, 0.42) 18%, rgba(126, 129, 117, 0));
-  }
-
   .admin-kicker {
-    @apply text-[10px] font-medium uppercase tracking-[0.2em] text-soft-400;
-  }
-}
-
-/* Smooth image + content transitions */
-img {
-  transition: opacity 0.4s cubic-bezier(0.25, 0.1, 0.25, 1),
-    transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* Selection */
-::selection {
-  background: rgba(41, 66, 56, 0.18);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
+    @apply text-[10px] font-medium uppercase tracking-[0.16em] text-soft-400;
   }
 
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+  /* The heading above a panel's contents. Used often enough that restating
+     three utilities every time is how the admin drifts. */
+  .admin-panel-title {
+    @apply text-base font-medium text-soft-800;
   }
-}
 
-/* Flatten the large panel radii inherited from an earlier iteration, so cards
-   and sections stay square.
-
-   `.rounded-full` is deliberately NOT in this list any more. It was, while the
-   system was a stark editorial one where nothing curved — but a colourway
-   swatch and a save button are circles by nature, and forcing them square made
-   the markup say one thing and the screen show another. The blanket override
-   stays only for the oversized panel radii it was written for. */
-.rounded-xl,
-.rounded-2xl,
-.rounded-3xl,
-.rounded-4xl {
-  border-radius: 0 !important;
-}
-
-/* Scrollbar minimal */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
-  border-radius: 99px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.25);
+  .page-enter {
+    animation: slideUp 0.6s var(--ease-out) forwards;
+  }
 }
 
 /* ============================================================================
-   LUXURY LAYER
-   Only what the component layer actually consumes. Spacing, buttons, forms and
-   grids are expressed as Tailwind utilities inside the components themselves,
-   so there are no parallel CSS classes here to drift out of sync with them.
+   TYPE UTILITIES
+   The two ends of the system, plus the fluid display steps.
    ============================================================================ */
 
-/* The two ends of the type system. `display` is for anything set large — the
-   negative tracking is what stops a big grotesque from looking like a system
-   font. `micro` is the wide-tracked caps used for eyebrows, labels and nav. */
 .type-display {
   font-weight: 400;
   letter-spacing: var(--track-display);
@@ -253,19 +301,114 @@ img {
   line-height: 1.4;
 }
 
+.type-d1 {
+  font-size: var(--display-1);
+  font-weight: 400;
+  letter-spacing: var(--track-display);
+  line-height: 0.96;
+}
+
+.type-d2 {
+  font-size: var(--display-2);
+  font-weight: 400;
+  letter-spacing: var(--track-display);
+  line-height: 1.02;
+}
+
+.type-d3 {
+  font-size: var(--display-3);
+  font-weight: 400;
+  letter-spacing: var(--track-display);
+  line-height: 1.1;
+}
+
+/* Running copy. Set at 15px with generous leading — 14px body text is a habit
+   from dashboards, and this is something people read. */
+.type-body {
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+/* The vertical rhythm between major sections, as a utility so pages stop
+   carrying `mt-24 sm:mt-36` everywhere. */
+.section-gap {
+  margin-top: var(--section-gap);
+}
+
 /* Full-bleed escape hatch. The app shell centres content inside a padded
    max-width container, which is right for reading but wrong for imagery — a
-   hero that stops short of the viewport edge loses most of its authority.
-   This pulls an element back out to the full width from inside that container
-   without needing a separate layout. */
+   hero that stops short of the viewport edge loses most of its authority. This
+   pulls an element back out to the full viewport width from inside that
+   container without needing a separate layout. */
 .bleed {
   width: 100vw;
   margin-left: 50%;
   transform: translateX(-50%);
 }
 
+/* ============================================================================
+   MISC
+   ============================================================================ */
+
+img {
+  transition: opacity 0.4s var(--ease-out), transform 0.7s var(--ease-out);
+}
+
+::selection {
+  background: #d7cdc1;
+  color: var(--fg);
+}
+
+/* The blanket `.rounded-xl/2xl/3xl/4xl { border-radius: 0 !important }` override
+   that used to sit here is gone, along with every class it was suppressing.
+
+   It existed to flatten panel radii inherited from an earlier, rounded
+   iteration. The trouble is what that leaves behind: twenty call sites reading
+   `glass rounded-3xl` while the screen drew a square, so the markup described a
+   design nobody could see, and anyone writing `rounded-2xl` afterwards got
+   silently overruled. The classes have been removed from the components and the
+   radius scale from the Tailwind config, so the system is square because nothing
+   asks for a radius — not because a rule at the bottom of this file is quietly
+   cancelling every request.
+
+   `.rounded-full` was already exempt and stays untouched: a colourway swatch and
+   a cart count are circles by nature. */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(22, 19, 15, 0.16);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(22, 19, 15, 0.28);
+}
+
+/* Declared here, not in the Tailwind config, and that is the fix for a real
+   bug: Tailwind only emits a `@keyframes` block when the matching `animate-*`
+   utility appears somewhere in the scanned source. Nothing used
+   `animate-slide-up`, so `slideUp` was never emitted and `.page-enter` — which
+   is applied to every page — had been animating a keyframe that did not exist.
+   Silently, because a missing animation name is not an error in CSS. */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Loading shimmer. The keyframes are declared here rather than relying on the
-   Tailwind `animate-*` utility, because this class is applied directly. */
+   Tailwind `animate-*` utility, for the same reason. */
 @keyframes skeleton-shimmer {
   0% {
     background-position: 200% 0;
@@ -276,7 +419,7 @@ img {
 }
 
 .skeleton-loading {
-  background: linear-gradient(90deg, #e8e8e8 25%, #d3d3d3 50%, #e8e8e8 75%);
+  background: linear-gradient(90deg, #efe9e2 25%, #e2dad0 50%, #efe9e2 75%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.5s infinite linear;
 }
@@ -288,13 +431,55 @@ img {
   position: absolute;
   inset: 0;
   opacity: 0;
-  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.5s var(--ease-out);
   /* Opaque, because these layers use object-contain: without a background the
-     letterboxed edges would let the front image ghost through the hover
-     layer whenever the two shots aren't the same aspect ratio. */
-  background: #ffffff;
+     letterboxed edges would let the front image ghost through the hover layer
+     whenever the two shots aren't the same aspect ratio. Matched to the product
+     ground, not white, or the letterboxing shows as a pale rectangle. */
+  background: var(--product-ground);
 }
 
 .media-layer[data-active="true"] {
   opacity: 1;
+}
+
+/* A marquee for the announcement bar. Duplicated content plus a 50% translate
+   is what makes the loop seamless; `will-change` keeps it on the compositor
+   instead of repainting the header on every frame. */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  display: inline-flex;
+  width: max-content;
+  will-change: transform;
+  animation: marquee 38s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  /* The marquee is motion for its own sake, so it stops entirely rather than
+     running fast — an animation reduced to 0.01ms would leave it frozen
+     mid-scroll with the duplicate copy visible. */
+  .marquee-track {
+    animation: none;
+    width: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

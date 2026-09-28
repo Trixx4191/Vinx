@@ -52,18 +52,24 @@ export default async function ProductsPage({
   const activeCategory = categories.find((item) => item.slug === query.category);
 
   return (
-    <div className="page-enter">
+    // No `page-enter` here: the root layout already wraps every page's children
+    // in it, so this was running the same entry animation twice, nested — the
+    // inner one starting from the outer one's moving frame.
+    <div>
       <header className="flex flex-col justify-between gap-5 border-b border-soft-200 pb-6 sm:flex-row sm:items-end">
         <div>
-          <Kicker>Vinx / Collection 01</Kicker>
-          <Heading level={2} className="mt-3">
+          <Kicker>Collection 01</Kicker>
+          {/* h1 at display-2. This was an `h2`, which left the catalog — the
+              most-linked page on the site after the homepage — with no
+              top-level heading at all. */}
+          <Heading level={1} size={2} className="mt-3">
             {activeCategory ? activeCategory.name : "The essentials."}
           </Heading>
-          <p className="mt-4 max-w-md text-sm leading-relaxed text-soft-500">
+          <p className="type-body mt-4 max-w-copy">
             Soft layers and considered essentials for the days that do not need a uniform.
           </p>
         </div>
-        <span className="shrink-0 text-xs text-soft-400">
+        <span className="type-micro shrink-0 text-soft-400">
           {total} {total === 1 ? "piece" : "pieces"}
         </span>
       </header>

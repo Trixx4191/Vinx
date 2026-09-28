@@ -101,7 +101,24 @@ export default function ImageUploadField({ label, value, onChange, kind = "image
         )}
       </div>
 
-      <input type="file" accept={ACCEPT[kind]} onChange={handleFile} className="mt-1 w-full text-sm" />
+      {/* The `file:` variants style the button the browser renders inside the
+          input. Left alone it is the OS default — a grey bevelled "Choose File"
+          that is the single most out-of-place element in the admin, and the
+          only control on the page that does not belong to this design. The
+          input itself stays a real file input, so the picker, drag-and-drop and
+          keyboard behaviour are untouched. */}
+      <input
+        type="file"
+        accept={ACCEPT[kind]}
+        onChange={handleFile}
+        disabled={uploading}
+        className="mt-1.5 w-full text-xs text-soft-500
+          file:mr-4 file:cursor-pointer file:border file:border-soft-300 file:bg-transparent
+          file:px-4 file:py-2 file:text-[10px] file:font-medium file:uppercase file:tracking-[0.1em]
+          file:text-soft-700 file:transition-colors
+          hover:file:border-soft-700 hover:file:bg-soft-700 hover:file:text-soft-50
+          disabled:opacity-50"
+      />
 
       {hint && !error && <p className="mt-1 text-xs text-soft-400">{hint}</p>}
       {uploading && <p className="mt-1 text-xs text-soft-500">Uploading…</p>}

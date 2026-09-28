@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin, logAdminAction } from "@/lib/requireAdmin";
 import { createProductSchema } from "@/lib/validation";
 import { withSafeErrors } from "@/lib/safeErrors";
+import { findUnknownModelIds, shotRows } from "@/lib/modelShots";
 
 export async function GET() {
   const admin = await requireAdmin();
@@ -40,6 +41,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unknown category" }, { status: 400 });
     }
 
+    const unknownModels = await findUnknownModelIds(data.modelShots);
+    if (unknownModels.length > 0) {
+      return NextResponse.json(
+        { error: "One of the selected models no longer exists. Reload the page and pick again." },
+        { status: 400 }
+      );
+    }
+
     const slug = data.name
       .toLowerCase()
       .trim()
@@ -60,9 +69,10 @@ export async function POST(req: NextRequest) {
         hoverVideoUrl: data.hoverVideoUrl ?? null,
         galleryImages: data.galleryImages,
         isPublished: data.isPublished,
-        variants: { create: data.variants }
+        variants: { create: data.variants },
+        modelShots: { create: shotRows(data.modelShots) }
       },
-      include: { variants: true }
+      include: { variants: true, modelShots: { include: { model: true } } }
     });
 
     await logAdminAction(admin.session.user!.id!, "product.create", "Product", product.id, {

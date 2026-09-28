@@ -12,9 +12,9 @@ export default function CartPage() {
 
   if (items.length === 0) {
     return (
-      <div className="page-enter mx-auto max-w-lg py-24 text-center sm:py-32">
-        <Kicker>Vinx / Bag</Kicker>
-        <Heading level={2} className="mt-5">
+      <div className="mx-auto max-w-lg py-24 text-center sm:py-32">
+        <Kicker>Bag</Kicker>
+        <Heading level={1} size={2} className="mt-5">
           Your bag is empty.
         </Heading>
         <p className="mt-5 text-sm text-soft-500">There are no pieces here yet.</p>
@@ -26,10 +26,10 @@ export default function CartPage() {
   }
 
   return (
-    <div className="page-enter mx-auto max-w-6xl pb-24 lg:pb-0">
+    <div className="mx-auto max-w-6xl pb-24 lg:pb-0">
       <header className="border-b border-soft-200 pb-6">
-        <Kicker>Vinx / Bag</Kicker>
-        <Heading level={2} className="mt-4">
+        <Kicker>Bag</Kicker>
+        <Heading level={1} size={2} className="mt-4">
           Your selection.
         </Heading>
       </header>

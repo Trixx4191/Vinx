@@ -48,6 +48,7 @@ Central work: a back-office UI, not developer intervention.
 - `/admin` — dashboard
 - `/admin/products` — full catalog table (including unpublished products)
 - `/admin/products/new` — create a product with variants
+- `/admin/models` — the shoot roster, for on-model photography
 - `/admin/restock` — paste SKU,quantity pairs to bulk-update stock in one submit
 
 ### Roles
@@ -128,21 +129,93 @@ Assume everything shipped to the client — HTML, JS, CSS, and every API JSON re
 ## Design system and product media
 
 The storefront uses a small set of shared primitives in
-`src/components/luxury/` — `Button`, `Heading`, `Kicker`, `Badge`, `Price`,
-`Section`, `ProductGrid`, `ImageGallery`, form fields and skeletons. They are
-presentation-only and carry no product knowledge; the product tile itself lives
-in `src/components/ProductCard.tsx` so there is exactly one definition of what
-a product looks like in a grid.
+`src/components/luxury/` — `Button`, `Heading`, `Kicker`, `SectionHeader`,
+`Badge`, `Price`, `Section`, `ProductGrid`, `ImageGallery`, form fields and
+skeletons. They are presentation-only and carry no product knowledge; the
+product tile itself lives in `src/components/ProductCard.tsx` so there is
+exactly one definition of what a product looks like in a grid.
 
-Two deliberate constraints:
+### The look, and where it is defined
+
+Everything the design is made of is a token in `src/app/globals.css` or the
+`soft` ramp in `tailwind.config.ts`. No component hard-codes a colour, a
+tracking or a section gap.
+
+- **Ground.** Bone (`#faf8f6`), not white, and warm all the way down the ramp
+  rather than only at the pale end. The reference storefronts shoot on sand and
+  sit on sand because a warm ground flatters skin and knitwear; on a cold grey
+  both look grey too, and this catalog is mostly both. The product stage
+  (`--product-ground`) is one step darker, so a tile reads as an object on the
+  page rather than a hole in it.
+- **No surfaces.** Storefront content sits directly on the ground, separated by
+  space and the occasional hairline. There are no cards, borders-around-groups
+  or drop shadows — those are what make a fashion site look like a dashboard.
+  `.glass` survives for the **admin**, which is a genuinely different problem: a
+  dense back-office benefits from panels that group its fields.
+- **One typeface.** Archivo, one variable file, latin subset. It replaced Inter,
+  which is an excellent interface face and therefore reads as software. The
+  whole type system is two treatments of it: `type-d1/d2/d3` pull tracking in at
+  display sizes, `type-micro` pushes it out for labels, nav and buttons. A
+  display/text pairing was rejected on page weight — a second family is a second
+  download for every shopper, and plenty of this audience is on mobile data.
+- **Fluid display steps.** `--display-1/2/3` are `clamp()`, not
+  `text-4xl sm:text-6xl` stacks. A breakpoint pair jumps: at 639px a title is one
+  size and at 641px it is a third bigger, and every width in between gets
+  whichever of the two fits worst.
+- **One rhythm.** `--section-gap` is the space between every major section, as
+  the `.section-gap` utility. Airiness is most of what separates a storefront
+  that looks considered from one that looks cramped, and it only reads as
+  intentional when it is consistent.
+- **Underline fields, not boxes.** A page of boxed inputs is the single thing
+  that most makes a storefront look like admin software.
+
+Two constraints that are easy to break by accident:
 
 - **The Tailwind `spacing` and `fontSize` scales are never redefined.**
   Overriding a key like `4` or `sm` in `theme.extend` silently rewrites every
-  existing `p-4` and `text-sm` across the app at once. The luxury look comes
-  from the component layer instead.
-- **Headings use a serif face** (`Playfair Display`, loaded via `next/font` and
-  exposed as `--font-luxury`) with a system serif fallback, so headings still
-  render correctly if the font never loads.
+  existing `p-4` and `text-sm` across the app at once. This has bitten once
+  already, doubling every padding in the app.
+- **Keyframes are declared in `globals.css`, not in the Tailwind config.**
+  Tailwind only emits a `@keyframes` block when the matching `animate-*` utility
+  appears in the scanned source. `slideUp` was declared in the config and used
+  only by `.page-enter` in CSS, so it was never emitted and every page's entry
+  animation silently did nothing.
+
+### The admin
+
+Same brand, different problem. The storefront is surface-less because content
+there is meant to be looked at; the admin is a dense back-office where someone
+is scanning, comparing and typing, and grouping fields into panels is what makes
+that legible. So panels stay — flat, square, hairline, in the same warm neutrals
+and the same typeface, so it reads as one product rather than two.
+
+`.admin-panel` and `.admin-panel-link` replaced `glass rounded-2xl` /
+`glass rounded-3xl`, which appeared at twenty call sites. The radius in those was
+already a no-op: a blanket `.rounded-* { border-radius: 0 !important }` rule at
+the bottom of `globals.css` flattened every one of them, so the markup described
+a rounded panel the screen never drew, and anyone writing `rounded-2xl`
+afterwards was silently overruled. Both the classes and the override are gone,
+along with the radius scale in the Tailwind config — the system is square because
+nothing asks for a radius, not because a rule is quietly cancelling every
+request. `.glass`, `.glass-strong`, `.hero-glass` and `.card-soft` went with
+them: leftovers from an iOS-glass iteration, three of which had no callers at
+all.
+
+`.admin-panel-link` has no hover lift. A card that rises under the cursor is the
+dashboard gesture this system spent the storefront removing.
+
+### Heading level vs heading size
+
+`Heading` takes `level` (the semantic tag) and an optional `size` (the visual
+step). They are separate because a product page's title has to be the `h1` for
+the document outline and for search results, while display-1 is a
+full-viewport-width collection headline that would dwarf the product beside it.
+
+Before this existed, the only way to get the right size was `level={2}` — and
+the storefront had picked that up on **every page**. The catalog, bag, checkout,
+account, order and product pages all rendered their title as an `h2` and had no
+top-level heading at all. That reads as a purely visual choice in a diff, which
+is exactly why it spread.
 
 `Product` carries two optional media fields beyond `frontImageUrl` /
 `backImageUrl`:
@@ -204,6 +277,8 @@ Rough specs:
 | --- | --- | --- | --- |
 | Front / back image | JPEG, PNG or WebP | ~1200–2000px wide, under 8MB | Required. 3:4 portrait matches the tile. |
 | Detail shots | same | same | Up to 8 per product. |
+| Model shot | same | same | Up to 5 per product, one per model. You produce these outside Vinx — see [Model view](#model-view). |
+| Model portrait | same | smaller is fine | Optional. Identifies the model in the admin picker. |
 | Hover video | MP4 (H.264) | 3–8s, under 25MB | Muted — it plays with no sound and no controls. |
 
 The browser-side size check is a convenience only; a presigned PUT cannot cap
@@ -428,6 +503,80 @@ The column is nullable and the fallback is permanent, so variants created before
 it keep working untouched. Setting a colour is an improvement, not a migration
 you have to finish.
 
+## Site facts live in one file
+
+`src/content/site.ts` holds everything on the storefront that is a fact about
+the business rather than a piece of design: the contact address, the delivery
+zones and times, the free-delivery threshold, the returns window, the payment
+methods.
+
+**Every value in it is a placeholder and needs your real one.** Several are
+commitments to a customer — a returns window and a delivery estimate are terms
+you are agreeing to when someone buys — so they are deliberately not scattered
+through the markup where you would have had to hunt for them. They appear in the
+footer, the customer-service pages, the product page's delivery note and the
+homepage service band, and changing them here changes all of those at once.
+
+The customer-service pages (`/delivery`, `/returns`, `/size-guide`, `/contact`,
+`/about`) exist so the footer does not link to 404s. A shopper who taps
+"Returns" and lands on a missing page trusts the checkout less, not just the
+footer.
+
+## Model view
+
+A product can show a photograph of a model wearing it. On the detail page that
+shot leads the gallery, captioned with who is wearing the piece, their height and
+the size they have on — "On Kofi · 185cm · wearing L". That caption is the whole
+reason a model is a database record rather than just another image URL: it tells
+a shopper more about fit than a size chart does, and it is the one thing the
+photograph cannot say for itself.
+
+**Vinx does not generate these images.** There is no model API, no key, no
+per-image cost and no generation pipeline anywhere in the codebase. You produce
+the image however you like, outside the application, and upload it in the admin
+product form through exactly the same presigned-upload path as the front and back
+shots. To the app it is simply another image on the product.
+
+Two tables:
+
+- **`Model`** — the three-to-five people the catalog is shot on: name, gender,
+  optional height and size worn, an optional reference portrait, an ordering, and
+  an `isActive` flag. A small registry rather than a free-text field per product,
+  because the point of a fixed roster is that the same faces recur, which is what
+  makes a catalog read as one brand. A typed-per-product name would be "Kofi",
+  "kofi" and "Kofi B." inside a week.
+- **`ProductModelShot`** — one uploaded image per (product, model) pair, unique
+  on that pair. A second angle on the same model belongs in the product's gallery
+  images; a duplicate pairing would make "which model is this shown on"
+  ambiguous.
+
+How it behaves:
+
+- **Adding a model view is per-product and optional.** There is no separate
+  toggle — a product has a model view if it has model shots, so there is nothing
+  that can fall out of sync with the imagery. Up to five shots per product.
+- **Models are retired, not deleted.** `isActive: false` removes a model from the
+  product-form picker while leaving every existing photograph intact. A delete is
+  refused with a 409 naming the count while shots still reference them, and the
+  foreign key is `RESTRICT` so the database refuses it too. That is deliberate:
+  cascading would strip imagery from every product they appear in, and nulling
+  would leave photographs of a person the catalog can no longer name.
+- **Retired models are still accepted on save.** `isActive` governs what is
+  offered for new shoots, not whether an existing product may keep its imagery.
+  Rejecting them would mean retiring a model silently broke every subsequent save
+  of every product they appear in.
+- **Ordering is server-side.** `sortOrder` is assigned from the submitted
+  sequence, not taken from the client, so the arrangement an admin made in the
+  form is the one a shopper sees.
+- **Model shots are loaded only on the detail page.** A grid tile shows the flat
+  product shot, so selecting model imagery for every card would be work nothing
+  renders.
+
+The migration adds two tables and alters none, so it cannot affect a live
+catalog: every existing product simply has no shots and renders exactly as
+before. `productMedia()` puts model shots first when they exist and is otherwise
+unchanged, which is why the new ordering needed no backfill.
+
 ## Tests
 
 ```
@@ -454,12 +603,30 @@ or data. Everything tested is a pure function, so none of it needs a database.
 - **`publicAsset`** — that image lookups cannot escape `public/`.
 - **`swatch`**, **`orderStatus`**, **`product`** — colour resolution and its
   fallbacks, status wording, timeline projection, minor-unit money conversion,
-  and product media ordering.
+  and product media ordering, including that model shots lead the gallery, sort
+  by `sortOrder` without mutating the product, and that the hover video is still
+  postered with the flat front image rather than whatever slot is now first.
+- **`inventory`** — the low-stock threshold, which was typed out by hand in six
+  places: two Prisma `lte: 3` filters, two `<= 3` comparisons colouring a table
+  cell amber, one storefront "only N left" notice, and one sentence of prose
+  telling an admin what "low stock" means. The tests assert the query filter and
+  the predicate agree on the boundary — if they drifted, the dashboard would
+  show a count the page it links to could not produce — and that the prose names
+  the same number the query uses.
+- **model view** — the caption built for a model shot, which omits a missing
+  height or size rather than printing an empty segment and drops a stored `0cm`
+  as the data error it is; plus the schema rules around it: a blank optional
+  number reads as absent rather than failing, heights are bounded to a plausible
+  human range, two shots of the same model are refused before Postgres can
+  return an opaque unique-constraint error, and a client-supplied `sortOrder` is
+  stripped.
 
 The suite is mutation-checked: reverting `isAdminRole` to an exact `"ADMIN"`
 comparison fails two tests, adding a `price` field back to `checkoutSchema` fails
-one, loosening the hex pattern fails two, and dropping the path-traversal guard
-fails one. Tests that cannot fail are not worth running.
+one, loosening the hex pattern fails two, dropping the path-traversal guard fails
+one, moving model shots to the end of the gallery fails four, and removing either
+the zero-height guard, the duplicate-model check or the height bound fails one
+each. Tests that cannot fail are not worth running.
 
 Not covered, and worth being precise about: anything needing a database or
 network. That includes the checkout transaction's stock decrement, payment

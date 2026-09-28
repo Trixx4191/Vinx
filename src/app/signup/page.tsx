@@ -36,7 +36,7 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="signup-page page-enter mx-auto max-w-sm py-16 sm:py-24">
+    <div className="signup-page mx-auto max-w-sm py-16 sm:py-24">
       <div className="text-center">
         <BrandMark href={null} className="text-[15px]" />
         <p className="type-micro mt-8 text-soft-400">Vinx / Account</p>

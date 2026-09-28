@@ -6,15 +6,18 @@ import ImageUploadField from "@/components/ImageUploadField";
 import { swatchColour } from "@/lib/swatch";
 
 type VariantRow = { size: string; color: string; colorHex?: string; sku: string; quantity: number };
-type ProductFormData = { id?: string; name: string; description: string; material: string; price: number; categorySlug: string; frontImageUrl: string; backImageUrl: string; hoverVideoUrl?: string; galleryImages: string[]; isPublished: boolean; variants: VariantRow[] };
+type ModelShotRow = { modelId: string; imageUrl: string };
+export type ModelOption = { id: string; name: string; gender: string; heightCm: number | null; wearingSize: string | null; referenceImageUrl: string | null; isActive: boolean };
+type ProductFormData = { id?: string; name: string; description: string; material: string; price: number; categorySlug: string; frontImageUrl: string; backImageUrl: string; hoverVideoUrl?: string; galleryImages: string[]; modelShots: ModelShotRow[]; isPublished: boolean; variants: VariantRow[] };
 
 // Matches the cap in createProductSchema, so the form can't offer a slot the
 // API would reject.
 const MAX_GALLERY_IMAGES = 8;
+const MAX_MODEL_SHOTS = 5;
 
-export default function AdminProductForm({ initial }: { initial?: ProductFormData }) {
+export default function AdminProductForm({ initial, models = [] }: { initial?: ProductFormData; models?: ModelOption[] }) {
   const router = useRouter();
-  const [form, setForm] = useState<ProductFormData>(initial ?? { name: "", description: "", material: "", price: 0, categorySlug: "", frontImageUrl: "", backImageUrl: "", hoverVideoUrl: "", galleryImages: [], isPublished: true, variants: [{ size: "", color: "", sku: "", quantity: 0 }] });
+  const [form, setForm] = useState<ProductFormData>(initial ?? { name: "", description: "", material: "", price: 0, categorySlug: "", frontImageUrl: "", backImageUrl: "", hoverVideoUrl: "", galleryImages: [], modelShots: [], isPublished: true, variants: [{ size: "", color: "", sku: "", quantity: 0 }] });
   const [priceText, setPriceText] = useState(initial ? (initial.price / 100).toFixed(2) : "");
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -49,6 +52,29 @@ export default function AdminProductForm({ initial }: { initial?: ProductFormDat
   }
   function removeVariant(index: number) { setForm((current) => ({ ...current, variants: current.variants.filter((_, variantIndex) => variantIndex !== index) })); }
 
+  // A model already carrying a shot on this product is not offered again: the
+  // database allows one shot per model per product, and offering a duplicate
+  // would only produce a rejected save.
+  const usedModelIds = new Set(form.modelShots.map((shot) => shot.modelId));
+  const selectableModels = models.filter((model) => model.isActive && !usedModelIds.has(model.id));
+  const [pendingModelId, setPendingModelId] = useState("");
+  // Falls back to a placeholder record so a shot whose model was retired — or
+  // deleted from under an open form — still renders with something readable
+  // instead of crashing on an undefined name.
+  function modelById(id: string): ModelOption {
+    return models.find((model) => model.id === id) ?? { id, name: "Unknown model", gender: "", heightCm: null, wearingSize: null, referenceImageUrl: null, isActive: false };
+  }
+  function addModelShot(imageUrl: string) {
+    setForm((current) => {
+      if (!pendingModelId || current.modelShots.length >= MAX_MODEL_SHOTS) return current;
+      if (current.modelShots.some((shot) => shot.modelId === pendingModelId)) return current;
+      return { ...current, modelShots: [...current.modelShots, { modelId: pendingModelId, imageUrl }] };
+    });
+    // Cleared so the next upload cannot silently attach to the model just used.
+    setPendingModelId("");
+  }
+  function removeModelShot(modelId: string) { setForm((current) => ({ ...current, modelShots: current.modelShots.filter((shot) => shot.modelId !== modelId) })); }
+
   async function submit(event: React.FormEvent) {
     event.preventDefault(); setError(null); setSaved(false);
     if (!form.frontImageUrl || !form.backImageUrl) { setError("Upload both product images before saving."); return; }
@@ -62,10 +88,10 @@ export default function AdminProductForm({ initial }: { initial?: ProductFormDat
   }
 
   return <form onSubmit={submit} className="space-y-6">
-    <section className="glass rounded-3xl p-5 sm:p-7"><p className="type-micro text-soft-400">01 / Basic information</p><div className="mt-5 space-y-4"><label className="block"><span className="field-label">Product name</span><input value={form.name} onChange={(event) => setField("name", event.target.value)} required className="input-soft" /></label><label className="block"><span className="field-label">Description</span><textarea value={form.description} onChange={(event) => setField("description", event.target.value)} required rows={4} className="input-soft" /></label><label className="block"><span className="field-label">Material</span><input value={form.material} onChange={(event) => setField("material", event.target.value)} required className="input-soft" /></label></div></section>
-    <section className="glass rounded-3xl p-5 sm:p-7"><p className="type-micro text-soft-400">02 / Pricing and category</p><div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="block"><span className="field-label">Price (GHS)</span><input type="number" min="0.01" step="0.01" value={priceText} onChange={(event) => setPriceText(event.target.value)} required className="input-soft" /></label><label className="block"><span className="field-label">Category slug</span><input value={form.categorySlug} onChange={(event) => setField("categorySlug", event.target.value)} placeholder="t-shirts" required className="input-soft" /></label></div><label className="mt-5 flex items-center gap-3 text-sm text-soft-600"><input type="checkbox" checked={form.isPublished} onChange={(event) => setField("isPublished", event.target.checked)} className="accent-soft-700" /> Published on the storefront</label></section>
-    <section className="glass rounded-3xl p-5 sm:p-7">
-      <p className="type-micro text-soft-400">03 / Media</p>
+    <section className="admin-panel p-5 sm:p-7"><p className="admin-kicker">01 / Basic information</p><div className="mt-5 space-y-4"><label className="block"><span className="field-label">Product name</span><input value={form.name} onChange={(event) => setField("name", event.target.value)} required className="input-soft" /></label><label className="block"><span className="field-label">Description</span><textarea value={form.description} onChange={(event) => setField("description", event.target.value)} required rows={4} className="input-soft" /></label><label className="block"><span className="field-label">Material</span><input value={form.material} onChange={(event) => setField("material", event.target.value)} required className="input-soft" /></label></div></section>
+    <section className="admin-panel p-5 sm:p-7"><p className="admin-kicker">02 / Pricing and category</p><div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="block"><span className="field-label">Price (GHS)</span><input type="number" min="0.01" step="0.01" value={priceText} onChange={(event) => setPriceText(event.target.value)} required className="input-soft" /></label><label className="block"><span className="field-label">Category slug</span><input value={form.categorySlug} onChange={(event) => setField("categorySlug", event.target.value)} placeholder="t-shirts" required className="input-soft" /></label></div><label className="mt-5 flex items-center gap-3 text-sm text-soft-600"><input type="checkbox" checked={form.isPublished} onChange={(event) => setField("isPublished", event.target.checked)} className="accent-soft-700" /> Published on the storefront</label></section>
+    <section className="admin-panel p-5 sm:p-7">
+      <p className="admin-kicker">03 / Media</p>
       <p className="mt-2 text-sm text-soft-500">Front and back are required. The video and detail shots are optional.</p>
 
       <div className="mt-5 grid gap-5 sm:grid-cols-2">
@@ -113,7 +139,86 @@ export default function AdminProductForm({ initial }: { initial?: ProductFormDat
         )}
       </div>
     </section>
-    <section className="glass rounded-3xl p-5 sm:p-7"><div className="flex items-start justify-between gap-4"><div><p className="type-micro text-soft-400">04 / Variants and inventory</p><p className="mt-2 text-sm text-soft-500">Each size, color, and SKU combination is tracked separately.</p></div><button type="button" onClick={() => setForm((current) => ({ ...current, variants: [...current.variants, { size: "", color: "", colorHex: "", sku: "", quantity: 0 }] }))} className="btn-secondary shrink-0 px-3 py-2 text-xs">Add variant</button></div>
+
+    <section className="admin-panel p-5 sm:p-7">
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="admin-kicker">04 / Model view</p>
+        <span className="text-[10px] uppercase tracking-[0.12em] text-soft-400">{form.modelShots.length} / {MAX_MODEL_SHOTS}</span>
+      </div>
+      <p className="mt-2 max-w-xl text-sm text-soft-500">
+        Optional. Upload a photograph of a model wearing this piece and it leads the gallery on the product
+        page, captioned with their height and the size they have on. Leave this empty and the product shows
+        only the flat shots.
+      </p>
+
+      {models.length === 0 ? (
+        <p className="mt-4 text-sm text-soft-500">
+          No models on the roster yet. Add them under <a href="/admin/models" className="underline decoration-soft-300 underline-offset-4 hover:text-soft-800">Models</a> first.
+        </p>
+      ) : (
+        <>
+          {form.modelShots.length > 0 && (
+            <div className="mt-5 flex flex-wrap gap-3">
+              {form.modelShots.map((shot) => {
+                const model = modelById(shot.modelId);
+                return (
+                  <div key={shot.modelId} className="relative w-24 border border-soft-200 bg-white p-1">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={shot.imageUrl} alt={`${model.name} wearing this product`} className="h-28 w-full object-cover" />
+                    <p className="mt-1 truncate px-0.5 text-[10px] text-soft-500" title={model.name}>{model.name}</p>
+                    <p className="truncate px-0.5 text-[10px] text-soft-400">
+                      {[model.heightCm ? `${model.heightCm}cm` : null, model.wearingSize ? model.wearingSize : null].filter(Boolean).join(" · ") || "—"}
+                    </p>
+                    <button type="button" onClick={() => removeModelShot(shot.modelId)} aria-label={`Remove ${model.name}'s shot`} className="absolute right-1 top-1 bg-white px-1.5 py-0.5 text-[10px] uppercase tracking-[0.1em] text-soft-500 hover:text-vienna-red">
+                      ×
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {form.modelShots.length < MAX_MODEL_SHOTS && (
+            <div className="mt-5 border-t border-soft-200 pt-5">
+              {selectableModels.length === 0 ? (
+                <p className="text-sm text-soft-500">Every active model already has a shot on this product.</p>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="field-label">Model</span>
+                    <select value={pendingModelId} onChange={(event) => setPendingModelId(event.target.value)} className="input-soft">
+                      <option value="">Choose a model…</option>
+                      {selectableModels.map((model) => (
+                        <option key={model.id} value={model.id}>
+                          {model.name} — {[model.gender, model.heightCm ? `${model.heightCm}cm` : null].filter(Boolean).join(", ")}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <div>
+                    {/* The upload is gated on a model being chosen, because the
+                        image alone does not say who is in it. Rendering the
+                        field only once a model is picked makes the order
+                        obvious without an error message. */}
+                    {pendingModelId ? (
+                      <ImageUploadField label={`Shot of ${modelById(pendingModelId).name}`} hint="The image you produced of this model wearing this piece." value="" onChange={addModelShot} />
+                    ) : (
+                      <div>
+                        <span className="field-label">Shot</span>
+                        <p className="mt-1 text-xs text-soft-400">Choose a model first.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </section>
+
+    <section className="admin-panel p-5 sm:p-7"><div className="flex items-start justify-between gap-4"><div><p className="admin-kicker">05 / Variants and inventory</p><p className="mt-2 text-sm text-soft-500">Each size, color, and SKU combination is tracked separately.</p></div><button type="button" onClick={() => setForm((current) => ({ ...current, variants: [...current.variants, { size: "", color: "", colorHex: "", sku: "", quantity: 0 }] }))} className="btn-secondary shrink-0 px-3 py-2 text-xs">Add variant</button></div>
       <p className="mt-3 text-xs text-soft-400">The swatch beside each colour is what shoppers see on the grid. It is seeded from the colour name — adjust it to match the actual garment.</p>
       <div className="mt-5 space-y-3">
         {form.variants.map((variant, index) => (

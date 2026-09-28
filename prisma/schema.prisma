@@ -104,8 +104,64 @@ model Product {
   galleryImages String[]         @default([])
   isPublished   Boolean          @default(true)
   variants      ProductVariant[]
+  // On-model photographs, uploaded by an admin. Absent means this product has
+  // no model view, which is the admin's per-product choice.
+  modelShots    ProductModelShot[]
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
+}
+
+/// A person the catalog is shot on.
+///
+/// Deliberately a small registry rather than a free-text field on each
+/// product: the point of having three to five of them is that the same people
+/// recur across the catalog, which is what makes it read as one brand. A typed
+/// name per product would drift into "Kofi", "kofi" and "Kofi B." within a week.
+///
+/// The images themselves are produced outside this application and uploaded.
+/// Nothing here generates anything.
+model Model {
+  id          String  @id @default(cuid())
+  name        String
+  /// Free text rather than an enum — "Women", "Men", "Unisex" and anything
+  /// else you decide to shoot are all equally valid, and an enum would need a
+  /// migration every time that list changed.
+  gender      String
+  /// Shown beside a model shot so a shopper can judge fit. Both optional: a
+  /// shot is still useful without them, just less informative.
+  heightCm    Int?
+  wearingSize String?
+  /// A portrait of the model alone, used in the admin picker so staff choose a
+  /// face rather than a name from a dropdown.
+  referenceImageUrl String?
+  displayOrder Int     @default(0)
+  /// Retired rather than deleted: a model that has been shot in products stays
+  /// referenced by those shots, and deleting the row would take the imagery
+  /// with it.
+  isActive    Boolean  @default(true)
+  shots       ProductModelShot[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+/// One uploaded image of a given model wearing a given product.
+model ProductModelShot {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  modelId   String
+  /// Restrict, not Cascade: deleting a model must not silently erase every
+  /// photograph they appear in across the catalog.
+  model     Model   @relation(fields: [modelId], references: [id], onDelete: Restrict)
+  imageUrl  String
+  sortOrder Int     @default(0)
+  createdAt DateTime @default(now())
+
+  /// One shot per model per product. A second angle on the same model belongs
+  /// in the product's gallery images, not as a duplicate pairing that would
+  /// make "which model is this product shown on" ambiguous.
+  @@unique([productId, modelId])
+  @@index([productId])
 }
 
 model ProductVariant {

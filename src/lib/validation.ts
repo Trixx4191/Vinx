@@ -72,6 +72,50 @@ const optionalMediaUrl = mediaUrl
   .or(z.literal(""))
   .transform((value) => (value ? value : undefined));
 
+// A number that arrives from an HTML input, where an untouched optional field
+// gives "" rather than nothing at all. Without this, a blank height would fail
+// as "expected number, received string" and block the save.
+const optionalPositiveInt = (max: number) =>
+  z.preprocess(
+    (value) => (value === "" || value === null ? undefined : value),
+    z.coerce.number().int().positive().max(max).optional()
+  );
+
+/**
+ * A model in the shoot registry.
+ *
+ * Note what is absent: any notion of generating an image. A model here is a
+ * name, a few measurements and a reference portrait. The photographs of that
+ * model wearing a product are made outside this application and uploaded.
+ */
+export const modelSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  // Free text, matching the column. An enum here would mean a code change and
+  // a migration every time the shoot list grows.
+  gender: z.string().trim().min(1).max(30),
+  // Bounded to a plausible human range. This is display text next to a
+  // garment, and "1850cm" beside a hoodie is worse than no height at all.
+  heightCm: optionalPositiveInt(250),
+  wearingSize: z
+    .string()
+    .trim()
+    .max(20)
+    .optional()
+    .or(z.literal(""))
+    .transform((value) => (value ? value : undefined)),
+  referenceImageUrl: optionalMediaUrl,
+  displayOrder: z.coerce.number().int().min(0).max(999).default(0),
+  isActive: z.boolean().default(true)
+});
+
+/** Cap on how many model shots one product can carry. */
+export const MAX_MODEL_SHOTS = 5;
+
+export const productModelShotSchema = z.object({
+  modelId: z.string().trim().min(1),
+  imageUrl: mediaUrl
+});
+
 export const createProductSchema = z.object({
   name: z.string().trim().min(1).max(150),
   description: z.string().trim().min(1).max(5000),
@@ -83,6 +127,20 @@ export const createProductSchema = z.object({
   backImageUrl: mediaUrl,
   hoverVideoUrl: optionalMediaUrl,
   galleryImages: z.array(mediaUrl).max(8).default([]),
+  // The admin's "does this product get a model view" choice is simply whether
+  // this array has anything in it. There is no separate toggle to fall out of
+  // sync with the imagery.
+  modelShots: z
+    .array(productModelShotSchema)
+    .max(MAX_MODEL_SHOTS)
+    .default([])
+    // The database enforces one shot per model per product. Catching a repeat
+    // here turns what would surface as an opaque 500 from a unique-constraint
+    // violation into a sentence naming what the admin did.
+    .refine(
+      (shots) => new Set(shots.map((shot) => shot.modelId)).size === shots.length,
+      { message: "Each model can only have one shot per product" }
+    ),
   variants: z.array(productVariantSchema).min(1),
   isPublished: z.boolean().default(true)
 });

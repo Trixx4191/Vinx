@@ -55,8 +55,8 @@ export default function OrderUpdateForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="glass rounded-3xl p-5 sm:p-6">
-      <p className="mb-5 rounded-2xl bg-white p-3 text-sm text-soft-600">Next recommended step: <strong>{currentStatus === "PENDING" ? "confirm payment" : currentStatus === "PAID" ? "prepare shipment" : currentStatus === "SHIPPED" ? "add delivery confirmation" : "review order status"}</strong></p>
+    <form onSubmit={handleSubmit} className="admin-panel p-5 sm:p-6">
+      <p className="mb-5 bg-white p-3 text-sm text-soft-600">Next recommended step: <strong>{currentStatus === "PENDING" ? "confirm payment" : currentStatus === "PAID" ? "prepare shipment" : currentStatus === "SHIPPED" ? "add delivery confirmation" : "review order status"}</strong></p>
       <div>
         <label className="field-label">Status</label>
         <select value={status} onChange={(e) => setStatus(e.target.value)} className="input-soft">

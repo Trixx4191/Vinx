@@ -43,7 +43,7 @@ export default async function OrderDetailPage({
   const hasFailed = order.status === "FAILED" || order.status === "CANCELLED";
 
   return (
-    <div className="page-enter mx-auto max-w-5xl">
+    <div className="mx-auto max-w-5xl">
       {/* Status notice. A hairline in the margin rather than a tinted panel —
           a filled colour block is the loudest thing on an otherwise white page
           and pulls attention away from the order itself. */}
@@ -64,8 +64,8 @@ export default async function OrderDetailPage({
       )}
 
       <header className="border-b border-soft-200 pb-6">
-        <Kicker>Vinx / Order</Kicker>
-        <Heading level={2} className="mt-4">
+        <Kicker>Order</Kicker>
+        <Heading level={1} size={2} className="mt-4">
           {isPaid ? "Order confirmed." : hasFailed ? "Order incomplete." : "Order placed."}
         </Heading>
         <p className="type-micro mt-4 text-soft-400">Reference — {order.id}</p>

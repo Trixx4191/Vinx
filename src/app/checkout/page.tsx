@@ -30,9 +30,9 @@ export default function CheckoutPage() {
 
   if (items.length === 0) {
     return (
-      <div className="page-enter mx-auto max-w-lg py-24 text-center sm:py-32">
-        <Kicker>Vinx / Checkout</Kicker>
-        <Heading level={2} className="mt-5">
+      <div className="mx-auto max-w-lg py-24 text-center sm:py-32">
+        <Kicker>Checkout</Kicker>
+        <Heading level={1} size={2} className="mt-5">
           Nothing to check out.
         </Heading>
         <p className="mt-5 text-sm text-soft-500">Add a piece to your bag first.</p>
@@ -81,10 +81,10 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="page-enter mx-auto max-w-6xl">
+    <div className="mx-auto max-w-6xl">
       <header className="border-b border-soft-200 pb-6">
-        <Kicker>Vinx / Checkout</Kicker>
-        <Heading level={2} className="mt-4">
+        <Kicker>Checkout</Kicker>
+        <Heading level={1} size={2} className="mt-4">
           A considered finish.
         </Heading>
       </header>

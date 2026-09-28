@@ -55,7 +55,7 @@ function LoginForm() {
   }
 
   return (
-    <div className="page-enter mx-auto max-w-sm py-16 sm:py-24">
+    <div className="mx-auto max-w-sm py-16 sm:py-24">
       <div className="text-center">
         <BrandMark href={null} className="text-[15px]" />
         <p className="type-micro mt-8 text-soft-400">Vinx / Account</p>

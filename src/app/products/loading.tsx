@@ -7,7 +7,7 @@ import { ProductCardSkeleton, ProductGrid, Skeleton } from "@/components/luxury"
  */
 export default function ProductsLoading() {
   return (
-    <div className="page-enter">
+    <div>
       <header className="mb-10 flex flex-col justify-between gap-5 border-b border-soft-300/60 pb-8 sm:flex-row sm:items-end">
         <div className="space-y-4">
           <Skeleton className="h-2.5 w-32" />

@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {
   checkoutSchema,
   createProductSchema,
+  modelSchema,
+  MAX_MODEL_SHOTS,
   createStaffSchema,
   updateStaffRoleSchema,
   passwordSchema
@@ -278,6 +280,177 @@ describe("passwordSchema", () => {
   it("refuses short, letterless and numberless passwords", () => {
     for (const bad of ["short9", "nodigitshere", "1234567890"]) {
       assert.equal(passwordSchema.safeParse(bad).success, false, `expected ${bad} to be refused`);
+    }
+  });
+});
+
+describe("modelSchema", () => {
+  const base = { name: "Kofi", gender: "Men" };
+
+  it("accepts a model with nothing but a name and gender", () => {
+    const parsed = modelSchema.safeParse(base);
+    assert.equal(parsed.success, true);
+    if (parsed.success) {
+      assert.equal(parsed.data.heightCm, undefined);
+      assert.equal(parsed.data.wearingSize, undefined);
+      assert.equal(parsed.data.isActive, true);
+      assert.equal(parsed.data.displayOrder, 0);
+    }
+  });
+
+  /**
+   * The admin form's optional number inputs submit "" when untouched. Without
+   * coercion that arrives as a string and fails as "expected number, received
+   * string" — a blank height would have blocked the save with an error message
+   * about a field the admin deliberately left alone.
+   */
+  it("reads an empty optional number as absent rather than failing", () => {
+    for (const value of ["", null, undefined]) {
+      const parsed = modelSchema.safeParse({ ...base, heightCm: value });
+      assert.equal(parsed.success, true, `heightCm ${JSON.stringify(value)} should parse`);
+      if (parsed.success) assert.equal(parsed.data.heightCm, undefined);
+    }
+  });
+
+  it("coerces a numeric string from the form into a number", () => {
+    const parsed = modelSchema.safeParse({ ...base, heightCm: "185", displayOrder: "3" });
+    assert.equal(parsed.success, true);
+    if (parsed.success) {
+      assert.equal(parsed.data.heightCm, 185);
+      assert.equal(parsed.data.displayOrder, 3);
+    }
+  });
+
+  /**
+   * This value is printed next to a garment. "1850cm" beside a hoodie is worse
+   * than no height at all, so the range is bounded rather than trusting a
+   * mistyped input.
+   */
+  it("rejects heights outside a plausible human range", () => {
+    for (const bad of [0, -5, 1850, 251, 1.5]) {
+      assert.equal(
+        modelSchema.safeParse({ ...base, heightCm: bad }).success,
+        false,
+        `heightCm ${bad} should be rejected`
+      );
+    }
+  });
+
+  it("requires a name and a gender", () => {
+    assert.equal(modelSchema.safeParse({ gender: "Men" }).success, false);
+    assert.equal(modelSchema.safeParse({ name: "Kofi" }).success, false);
+    assert.equal(modelSchema.safeParse({ name: "   ", gender: "Men" }).success, false);
+  });
+
+  it("normalises a blank size worn to absent", () => {
+    const parsed = modelSchema.safeParse({ ...base, wearingSize: "" });
+    assert.equal(parsed.success, true);
+    if (parsed.success) assert.equal(parsed.data.wearingSize, undefined);
+  });
+
+  // The reference portrait goes through the same URL guard as product imagery,
+  // so a traversal path cannot be stored here either.
+  it("holds the reference portrait to the same URL rules as product images", () => {
+    assert.equal(
+      modelSchema.safeParse({ ...base, referenceImageUrl: "https://cdn.vinx.com/kofi.png" }).success,
+      true
+    );
+    assert.equal(modelSchema.safeParse({ ...base, referenceImageUrl: "" }).success, true);
+    assert.equal(
+      modelSchema.safeParse({ ...base, referenceImageUrl: "/uploads/../../etc/passwd" }).success,
+      false
+    );
+    assert.equal(
+      modelSchema.safeParse({ ...base, referenceImageUrl: "javascript:alert(1)" }).success,
+      false
+    );
+  });
+});
+
+describe("createProductSchema — model shots", () => {
+  const baseProduct = {
+    name: "Classic Tee",
+    description: "A tee.",
+    material: "Cotton",
+    price: 12000,
+    categorySlug: "t-shirts",
+    frontImageUrl: "https://cdn.vinx.com/front.png",
+    backImageUrl: "https://cdn.vinx.com/back.png",
+    variants: [{ size: "M", color: "Black", sku: "SKU-1", quantity: 5 }]
+  };
+
+  const shot = (modelId: string) => ({ modelId, imageUrl: `https://cdn.vinx.com/${modelId}.png` });
+
+  // A product with no model view is the default, so this must never be required.
+  it("defaults to no model shots", () => {
+    const parsed = createProductSchema.safeParse(baseProduct);
+    assert.equal(parsed.success, true);
+    if (parsed.success) assert.deepEqual(parsed.data.modelShots, []);
+  });
+
+  it("accepts up to the cap and rejects more", () => {
+    const shots = Array.from({ length: MAX_MODEL_SHOTS }, (_, index) => shot(`m${index}`));
+    assert.equal(createProductSchema.safeParse({ ...baseProduct, modelShots: shots }).success, true);
+    assert.equal(
+      createProductSchema.safeParse({ ...baseProduct, modelShots: [...shots, shot("extra")] }).success,
+      false
+    );
+  });
+
+  /**
+   * The database enforces one shot per model per product. Catching a repeat in
+   * the schema is what turns an opaque unique-constraint 500 into a sentence
+   * naming what the admin actually did.
+   */
+  it("rejects two shots of the same model", () => {
+    const parsed = createProductSchema.safeParse({
+      ...baseProduct,
+      modelShots: [shot("kofi"), { modelId: "kofi", imageUrl: "https://cdn.vinx.com/other.png" }]
+    });
+
+    assert.equal(parsed.success, false);
+    if (!parsed.success) {
+      assert.match(parsed.error.errors[0]?.message ?? "", /one shot per product/i);
+    }
+  });
+
+  it("holds a model shot to the same URL rules as every other image", () => {
+    for (const bad of ["/uploads/../../etc/passwd", "javascript:alert(1)", "not a url", ""]) {
+      assert.equal(
+        createProductSchema.safeParse({
+          ...baseProduct,
+          modelShots: [{ modelId: "kofi", imageUrl: bad }]
+        }).success,
+        false,
+        `imageUrl ${JSON.stringify(bad)} should be rejected`
+      );
+    }
+  });
+
+  it("requires a model to attribute the shot to", () => {
+    assert.equal(
+      createProductSchema.safeParse({
+        ...baseProduct,
+        modelShots: [{ modelId: "", imageUrl: "https://cdn.vinx.com/a.png" }]
+      }).success,
+      false
+    );
+  });
+
+  /**
+   * Display order is assigned server-side from the submitted sequence. A
+   * client-supplied sortOrder is dropped rather than honoured, so a caller
+   * cannot push one product's shot ahead of the arrangement the admin made.
+   */
+  it("ignores a client-supplied sort order", () => {
+    const parsed = createProductSchema.safeParse({
+      ...baseProduct,
+      modelShots: [{ ...shot("kofi"), sortOrder: 99 }]
+    });
+
+    assert.equal(parsed.success, true);
+    if (parsed.success) {
+      assert.equal("sortOrder" in parsed.data.modelShots[0], false);
     }
   });
 });

@@ -27,14 +27,14 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
   return (
     <div className="grid gap-8 md:grid-cols-2">
       <div>
-        <p className="type-micro text-soft-400">Fulfillment / order</p>
-        <h1 className="mb-2 mt-2 type-display text-3xl text-soft-800">#{order.id.slice(0, 8)}</h1>
+        <p className="admin-kicker">Fulfillment / order</p>
+        <h1 className="mb-2 type-d3 mt-2 text-soft-800">#{order.id.slice(0, 8)}</h1>
         <p className="mb-6 text-sm text-soft-500">
           {order.user.name ?? "Customer"} — {order.user.email}
         </p>
 
-        <div className="glass mb-4 rounded-3xl p-5">
-          <h2 className="mb-4 text-lg font-medium text-soft-700">Items</h2>
+        <div className="admin-panel mb-4 p-5">
+          <h2 className="mb-4 admin-panel-title">Items</h2>
           {order.items.map((item) => (
             <div key={item.id} className="flex justify-between text-sm">
               <span className="text-sm text-soft-600">
@@ -50,8 +50,8 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
           <p className="mt-3 text-xs text-soft-400">Payment via {order.paymentProvider}, ref: {order.paymentRef ?? "—"}</p>
         </div>
 
-        <div className="glass mb-4 rounded-3xl p-5">
-          <h2 className="mb-2 text-lg font-medium text-soft-700">Shipping to</h2>
+        <div className="admin-panel mb-4 p-5">
+          <h2 className="mb-2 admin-panel-title">Shipping to</h2>
           <p className="text-sm leading-relaxed text-soft-500">
             {order.address.fullName}, {order.address.phone}
             <br />
@@ -59,8 +59,8 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
           </p>
         </div>
 
-        <div className="glass rounded-3xl p-5">
-          <h2 className="mb-4 text-lg font-medium text-soft-700">Status timeline</h2>
+        <div className="admin-panel p-5">
+          <h2 className="mb-4 admin-panel-title">Status timeline</h2>
           <ul className="space-y-3 text-sm text-soft-500">
             {order.statusHistory.map((event) => (
               <li key={event.id}>
@@ -73,7 +73,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
       </div>
 
       <div>
-        <h2 className="mb-3 text-lg font-medium text-soft-700">Update order</h2>
+        <h2 className="mb-3 admin-panel-title">Update order</h2>
         <OrderUpdateForm
           orderId={order.id}
           currentStatus={order.status}
