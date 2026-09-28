@@ -6,7 +6,7 @@ import { withSafeErrors } from "@/lib/safeErrors";
 import { profileSchema } from "@/lib/validation";
 
 /**
- * Change the display name. Email is deliberately not editable here: it is the
+ * Change the display name, or the VIP drop-email preference. Email is deliberately not editable here: it is the
  * login identifier, and changing it safely needs a confirmation sent to the new
  * address — without that, anyone holding a session could move the account to
  * an address they control and lock the owner out.
@@ -21,7 +21,14 @@ export async function PATCH(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.errors[0]?.message ?? "Invalid input" }, { status: 400 });
     }
-    await prisma.user.update({ where: { id: userId }, data: { name: parsed.data.name } });
+    const { name, vipDropEmails } = parsed.data;
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(name !== undefined ? { name } : {}),
+        ...(vipDropEmails !== undefined ? { vipDropEmails } : {})
+      }
+    });
     return NextResponse.json({ ok: true });
   });
 }

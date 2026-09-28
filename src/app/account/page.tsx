@@ -37,6 +37,7 @@ export default async function AccountPage({
       avatarUrl: true,
       vipUntil: true,
       vipSince: true,
+      vipDropEmails: true,
       addresses: { orderBy: { isDefault: "desc" }, take: 1 },
       orders: {
         orderBy: { createdAt: "desc" },
@@ -120,6 +121,7 @@ export default async function AccountPage({
       <VipPanel
         active={vipActive}
         vipUntil={user.vipUntil?.toISOString() ?? null}
+        dropEmails={user.vipDropEmails}
         prices={{ MONTH: planPrice(settings, "MONTH"), YEAR: planPrice(settings, "YEAR") }}
         // Only the four values the callback sets are passed on; anything else
         // in the URL is ignored rather than echoed.

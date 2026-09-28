@@ -51,10 +51,29 @@ export async function verifyTransaction(reference: string) {
   }
 
   return data.data as {
-    status: "success" | "failed" | "abandoned";
+    /** Paystack's numeric transaction id — what the refunds API filters by. */
+    id: number;
+    status: "success" | "failed" | "abandoned" | "reversed";
     amount: number;
     currency: string;
     reference: string;
     metadata: Record<string, unknown>;
   };
+}
+
+/**
+ * Every refund against one transaction, straight from Paystack. Used to check
+ * a refund webhook's claim rather than trusting the payload's amount.
+ */
+export async function listRefunds(transactionId: number) {
+  const res = await fetch(`${PAYSTACK_BASE}/refund?transaction=${encodeURIComponent(String(transactionId))}&perPage=100`, {
+    headers: { Authorization: `Bearer ${getSecretKey()}` }
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.status) {
+    throw new Error(data.message ?? "Paystack refund lookup failed");
+  }
+
+  return (data.data ?? []) as Array<{ amount: number; currency: string; status: string }>;
 }

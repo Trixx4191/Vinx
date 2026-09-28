@@ -226,9 +226,13 @@ export const changePasswordSchema = z.object({
   newPassword: passwordSchema
 });
 
-export const profileSchema = z.object({
-  name: z.string().trim().min(1, "Enter your name").max(100)
-});
+export const profileSchema = z
+  .object({
+    name: z.string().trim().min(1, "Enter your name").max(100).optional(),
+    /** Emails when a VIP early-access window opens. */
+    vipDropEmails: z.boolean().optional()
+  })
+  .refine((value) => value.name !== undefined || value.vipDropEmails !== undefined, "Nothing to update");
 
 /** Which VIP period to buy. The price is never taken from the client. */
 export const vipCheckoutSchema = z.object({

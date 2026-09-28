@@ -156,16 +156,37 @@ const OUTCOME_TEXT: Record<Exclude<VipOutcome, null>, string> = {
 export function VipPanel({
   active,
   vipUntil,
+  dropEmails,
   prices,
   outcome
 }: {
   active: boolean;
   vipUntil: string | null;
+  dropEmails: boolean;
   prices: { MONTH: number | null; YEAR: number | null };
   outcome: VipOutcome;
 }) {
   const [busy, setBusy] = useState<"MONTH" | "YEAR" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [emails, setEmails] = useState(dropEmails);
+  const [savingEmails, setSavingEmails] = useState(false);
+
+  async function toggleEmails() {
+    const next = !emails;
+    setEmails(next);
+    setSavingEmails(true);
+    setError(null);
+    const res = await fetch("/api/account/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ vipDropEmails: next })
+    });
+    setSavingEmails(false);
+    if (!res.ok) {
+      setEmails(!next);
+      setError("Could not save that. Try again.");
+    }
+  }
 
   async function buy(plan: "MONTH" | "YEAR") {
     setBusy(plan);
@@ -225,6 +246,19 @@ export function VipPanel({
             Mobile money or card. Does not renew automatically.
           </p>
         </div>
+      )}
+
+      {active && (
+        <label className="type-micro mt-6 inline-flex cursor-pointer items-center gap-2 text-[var(--muted)]">
+          <input
+            type="checkbox"
+            checked={emails}
+            onChange={toggleEmails}
+            disabled={savingEmails}
+            className="h-3 w-3 accent-current"
+          />
+          Email me when early access opens
+        </label>
       )}
 
       {error && <p className="type-micro mt-3 text-[var(--error)]" role="alert">{error}</p>}

@@ -61,7 +61,7 @@ export default async function AdminVipPage() {
         <p className="admin-kicker">Recent payments</p>
         {canManage && (
           <p className="mt-2 text-xs text-soft-400">
-            To refund: refund the payment in Paystack, then mark it here — that takes its time back.
+            To refund: refund the payment in Paystack. With the Paystack webhook set up it is marked here by itself once Paystack finishes; otherwise press Refunded.
           </p>
         )}
         <div className="mt-4 divide-y divide-soft-200">

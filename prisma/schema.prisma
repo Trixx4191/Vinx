@@ -57,6 +57,14 @@ model User {
   /// Start of the current unbroken membership. Reset when a lapsed member
   /// rejoins, so it always means "member continuously since".
   vipSince          DateTime?
+  /// The vipUntil value a "running out" reminder was last sent for. Buying
+  /// more time changes vipUntil, which re-arms the reminder for the new end.
+  vipReminderFor    DateTime?
+  /// Whether the member wants an email when an early-access window opens.
+  vipDropEmails     Boolean   @default(true)
+  /// The latest earlyAccessAt this member has been emailed about. Windows that
+  /// open after it are news; windows at or before it have been announced.
+  vipDropNoticedTo  DateTime?
   vipPurchases      VipPurchase[]
   orders            Order[]
   addresses         Address[]
@@ -283,6 +291,8 @@ model Order {
   statusHistory     OrderStatusEvent[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+
+  @@index([paymentRef])
 }
 
 // One row per status change, so a customer's tracking page can show a full

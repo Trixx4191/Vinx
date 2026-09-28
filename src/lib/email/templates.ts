@@ -186,3 +186,91 @@ export function vipReceiptEmail(data: VipReceiptData): EmailMessage {
 
   return { subject: `Vinx VIP — until ${until}`, html, text };
 }
+
+const longDate = (date: Date) => date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+const button = (href: string, label: string) =>
+  `<a href="${escapeHtml(href)}" style="display:inline-block;background:#121010;color:#ffffff;padding:12px 24px;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;">${escapeHtml(label)}</a>`;
+
+export type VipExpiringData = {
+  customerName: string | null;
+  vipUntil: Date;
+  siteUrl: string;
+};
+
+/**
+ * "Your VIP ends soon." Sent once per end date. Nothing renews by itself, so
+ * this is the only warning a member gets before early access stops.
+ */
+export function vipExpiringEmail(data: VipExpiringData): EmailMessage {
+  const greeting = data.customerName ? `Hello ${data.customerName},` : "Hello,";
+  const until = longDate(data.vipUntil);
+  const link = `${data.siteUrl}/account#vip`;
+
+  const html = shell(`
+<h1 style="margin:0 0 16px;font-size:22px;font-weight:400;">Your VIP ends ${escapeHtml(until)}</h1>
+<p style="margin:0 0 8px;font-size:14px;color:#4a453f;">${escapeHtml(greeting)}</p>
+<p style="margin:0 0 28px;font-size:14px;color:#4a453f;">Early access to drops stops then. VIP does not renew automatically — add another month or year from your account and it carries on from ${escapeHtml(until)}, so nothing is lost by renewing early.</p>
+${button(link, "Renew")}
+`);
+
+  const text = [
+    `Your VIP ends ${until}`,
+    "",
+    greeting,
+    `Early access to drops stops then. VIP does not renew automatically — add another month or year from your account and it carries on from ${until}, so nothing is lost by renewing early.`,
+    "",
+    link
+  ].join("\n");
+
+  return { subject: `Your Vinx VIP ends ${until}`, html, text };
+}
+
+export type VipDropOpenData = {
+  customerName: string | null;
+  products: Array<{ name: string; slug: string; price: number; currency: string; releaseAt: Date }>;
+  siteUrl: string;
+};
+
+/**
+ * "Early access is open." One email per run per member, listing every window
+ * that opened since they were last told — never one email per product.
+ */
+export function vipDropOpenEmail(data: VipDropOpenData): EmailMessage {
+  const greeting = data.customerName ? `Hello ${data.customerName},` : "Hello,";
+  const rows = data.products.map((product) => ({
+    name: product.name,
+    url: `${data.siteUrl}/products/${encodeURIComponent(product.slug)}`,
+    price: formatPrice(product.price, product.currency),
+    opens: longDate(product.releaseAt)
+  }));
+  const settings = `${data.siteUrl}/account#vip`;
+  const subject =
+    rows.length === 1 ? `Early access: ${rows[0].name}` : `Early access: ${rows.length} pieces`;
+
+  const html = shell(`
+<h1 style="margin:0 0 16px;font-size:22px;font-weight:400;">Early access is open</h1>
+<p style="margin:0 0 8px;font-size:14px;color:#4a453f;">${escapeHtml(greeting)}</p>
+<p style="margin:0 0 20px;font-size:14px;color:#4a453f;">As VIP you can buy ${rows.length === 1 ? "this" : "these"} now, before ${rows.length === 1 ? "it opens" : "they open"} to everyone.</p>
+<table style="width:100%;border-collapse:collapse;border-top:1px solid #e7e3df;">
+${rows
+  .map(
+    (row) =>
+      `<tr><td style="padding:12px 0;font-size:14px;border-bottom:1px solid #e7e3df;"><a href="${escapeHtml(row.url)}" style="color:#121010;">${escapeHtml(row.name)}</a><br><span style="font-size:12px;color:#79736c;">Everyone from ${escapeHtml(row.opens)}</span></td><td align="right" style="padding:12px 0;font-size:14px;border-bottom:1px solid #e7e3df;">${escapeHtml(row.price)}</td></tr>`
+  )
+  .join("\n")}
+</table>
+<p style="margin:24px 0 0;font-size:12px;color:#79736c;">You get these because you are VIP. <a href="${escapeHtml(settings)}" style="color:#79736c;">Turn them off</a>.</p>
+`);
+
+  const text = [
+    "Early access is open",
+    "",
+    greeting,
+    `As VIP you can buy ${rows.length === 1 ? "this" : "these"} now, before ${rows.length === 1 ? "it opens" : "they open"} to everyone.`,
+    "",
+    ...rows.flatMap((row) => [`${row.name}  ${row.price}`, `  Everyone from ${row.opens}`, `  ${row.url}`, ""]),
+    `You get these because you are VIP. Turn them off: ${settings}`
+  ].join("\n");
+
+  return { subject, html, text };
+}

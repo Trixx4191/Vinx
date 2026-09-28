@@ -11,7 +11,8 @@ import {
   updateStaffRoleSchema,
   passwordSchema,
   vipCheckoutSchema,
-  vipGrantSchema
+  vipGrantSchema,
+  profileSchema
 } from "@/lib/validation";
 
 const validAddress = {
@@ -617,5 +618,19 @@ describe("vipGrantSchema", () => {
 
   it("requires an email", () => {
     assert.ok(!vipGrantSchema.safeParse({ email: "not-an-email", days: 30 }).success);
+  });
+});
+
+describe("profileSchema", () => {
+  it("accepts a name, the drop-email toggle, or both", () => {
+    assert.ok(profileSchema.safeParse({ name: "Ama" }).success);
+    assert.ok(profileSchema.safeParse({ vipDropEmails: false }).success);
+    assert.ok(profileSchema.safeParse({ name: "Ama", vipDropEmails: true }).success);
+  });
+
+  it("rejects an empty update and a blank name", () => {
+    assert.ok(!profileSchema.safeParse({}).success);
+    assert.ok(!profileSchema.safeParse({ name: "   " }).success);
+    assert.ok(!profileSchema.safeParse({ vipDropEmails: "no" }).success);
   });
 });

@@ -5,6 +5,8 @@ import {
   orderConfirmationEmail,
   orderShippedEmail,
   vipReceiptEmail,
+  vipExpiringEmail,
+  vipDropOpenEmail,
   type OrderEmailData
 } from "@/lib/email/templates";
 
@@ -177,5 +179,41 @@ describe("vipReceiptEmail", () => {
 
   it("greets without a name when there is none", () => {
     assert.match(vipReceiptEmail({ ...base, customerName: null }).text, /^Hello,$/m);
+  });
+});
+
+describe("vipExpiringEmail", () => {
+  it("names the end date and says it does not renew", () => {
+    const email = vipExpiringEmail({ customerName: "Ama", vipUntil: new Date("2026-10-04T12:00:00Z"), siteUrl: "https://vinx.example" });
+    assert.match(email.subject, /4 October 2026/);
+    for (const part of [email.html, email.text]) {
+      assert.match(part, /does not renew automatically/);
+      assert.match(part, /https:\/\/vinx\.example\/account#vip/);
+    }
+  });
+});
+
+describe("vipDropOpenEmail", () => {
+  const product = { name: "Wool coat", slug: "wool-coat", price: 120000, currency: "GHS", releaseAt: new Date("2026-10-10T12:00:00Z") };
+
+  it("links each product and gives the public date", () => {
+    const email = vipDropOpenEmail({ customerName: null, products: [product], siteUrl: "https://vinx.example" });
+    assert.equal(email.subject, "Early access: Wool coat");
+    for (const part of [email.html, email.text]) {
+      assert.match(part, /https:\/\/vinx\.example\/products\/wool-coat/);
+      assert.match(part, /10 October 2026/);
+      assert.match(part, /1,200/);
+      assert.match(part, /Turn them off/i);
+    }
+  });
+
+  it("summarises several products in the subject", () => {
+    const email = vipDropOpenEmail({ customerName: null, products: [product, { ...product, name: "Scarf", slug: "scarf" }], siteUrl: "https://x.co" });
+    assert.equal(email.subject, "Early access: 2 pieces");
+  });
+
+  it("escapes product names", () => {
+    const email = vipDropOpenEmail({ customerName: null, products: [{ ...product, name: "<script>x</script>" }], siteUrl: "https://x.co" });
+    assert.ok(!email.html.includes("<script>x"));
   });
 });

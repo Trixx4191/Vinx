@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
-import { verifyTransaction } from "@/lib/payments/paystack";
+import { listRefunds, verifyTransaction } from "@/lib/payments/paystack";
+import { markOrderRefunded, refundVipPurchase } from "@/lib/payments/refunds";
+import { isFullRefund, processedRefundTotal } from "@/lib/vipJobs";
+import { prisma } from "@/lib/prisma";
 import { markOrderPaid } from "@/lib/payments/markOrderPaid";
 import { markVipPaid } from "@/lib/payments/markVipPaid";
 
@@ -66,6 +69,53 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  if (event.event === "refund.processed") {
+    const reference = event.data?.transaction_reference;
+    if (typeof reference === "string" && reference) {
+      try {
+        await applyProcessedRefund(reference);
+      } catch (err) {
+        // 502 so Paystack retries: a refund we failed to record would leave a
+        // refunded customer still holding VIP, or an order showing as paid.
+        console.error("[paystack webhook] refund handling failed", err);
+        return NextResponse.json({ error: "Refund check failed" }, { status: 502 });
+      }
+    }
+  }
+
   // Always 200 quickly once handled, or Paystack will retry aggressively.
   return NextResponse.json({ received: true });
+}
+
+/**
+ * A refund finished in Paystack. The payload names the transaction; everything
+ * else is asked of Paystack directly — the transaction's amount and every
+ * refund against it — and only a refund that adds up to the whole payment
+ * reverses anything. A partial refund (a goodwill discount) leaves the order
+ * or membership standing.
+ */
+async function applyProcessedRefund(reference: string) {
+  const [purchase, order] = await Promise.all([
+    prisma.vipPurchase.findUnique({ where: { paymentRef: reference }, select: { id: true } }),
+    prisma.order.findFirst({ where: { paymentRef: reference }, select: { id: true } })
+  ]);
+  // Not ours (another integration on the same Paystack account) — nothing to do.
+  if (!purchase && !order) return;
+
+  const transaction = await verifyTransaction(reference);
+  const refunded = processedRefundTotal(await listRefunds(transaction.id), transaction.currency);
+
+  if (!isFullRefund(refunded, transaction.amount)) {
+    console.info(`[paystack webhook] partial refund on ${reference}: ${refunded}/${transaction.amount} — left as is`);
+    return;
+  }
+
+  if (purchase) {
+    const result = await refundVipPurchase(purchase.id);
+    console.info(`[paystack webhook] VIP refund ${purchase.id}:`, result);
+  }
+  if (order) {
+    const result = await markOrderRefunded(order.id, "Refunded through Paystack");
+    console.info(`[paystack webhook] order refund ${order.id}:`, result);
+  }
 }

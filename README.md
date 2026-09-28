@@ -190,12 +190,24 @@ with Paystack — MoMo or card — like an order.
 - **Payment is confirmed server-to-server** (callback and webhook both verify
   with Paystack, check amount, currency and reference, and apply the period
   exactly once). A receipt is emailed with the new end date.
-- **Refunds:** refund the payment in the Paystack dashboard, then press
-  "Refunded" on it at `/admin/vip`. That takes the period back off the
-  member. The button records the refund; it does not move money.
+- **Refunds:** refund the payment in the Paystack dashboard. When Paystack
+  finishes it, its `refund.processed` webhook reaches
+  `/api/payments/paystack/webhook` and the period comes off the member on its
+  own (orders refunded in full are marked Refunded the same way). The webhook
+  does not trust the payload's amount: it asks Paystack for the transaction and
+  every refund against it, and only a refund of the **whole** payment reverses
+  anything — a partial refund leaves the membership or order standing. The
+  "Refunded" button at `/admin/vip` does the same by hand, for when the webhook
+  is not set up. Neither sends money.
 - **Complimentary VIP:** the master admin can give a customer 1 week – 1 year
   free from `/admin/vip` (for gifts or to put something right). It is recorded
   alongside payments as "Complimentary" and can be ended the same way.
+
+- **Emails** (need SMTP and the `/api/cron/vip` schedule below): a reminder
+  3 days before a membership ends — once per end date, re-armed when the
+  member renews — and one "early access is open" email when VIP windows open,
+  listing every piece that opened since that member was last told. Members can
+  turn drop emails off from their account; reminders always go.
 
 A product can carry two optional times, set in section **05 / Drop** of the
 product form:
@@ -603,6 +615,20 @@ learns nothing about whether the path exists.
 It reports how many orders it actually released, which is not the same as how
 many it found: the scheduled job and an opportunistic call can race, and only
 one wins the claim on each order.
+
+`GET|POST /api/cron/vip` sends the VIP reminder and early-access emails.
+Schedule it every 15 minutes with the same secret:
+
+```
+curl -H "Authorization: Bearer $CRON_SECRET" https://yourdomain.com/api/cron/vip
+```
+
+Each email is claimed with a conditional update before it is sent, so
+overlapping runs never double-send (the trade-off: if the mail host fails after
+the claim, that one email is skipped, not retried). Each run handles up to 50
+members per job and reports `more: true` when others are waiting; the next run
+continues from there. An early-access email goes out within one interval of
+the window opening — every 15 minutes means members hear within 15 minutes.
 
 ## Account self-service
 
